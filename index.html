@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkHub — Kumpulan Link Web App</title>
+<meta name="description" content="Dashboard kumpulan link web app saya">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">🔗</span>
+    <div>
+      <h1>LinkHub</h1>
+      <p>Kumpulan link web app saya</p>
+    </div>
+  </div>
+  <div class="actions">
+    <button id="btnAdd" class="btn primary">＋ Tambah Link</button>
+    <div class="menu-wrap">
+      <button id="btnMenu" class="btn ghost" title="Pengaturan">⚙️</button>
+      <div id="menu" class="dropdown hidden">
+        <button id="btnExport">⬇️ Export data (JSON)</button>
+        <button id="btnImport">⬆️ Import data (JSON)</button>
+        <button id="btnReset" class="danger">🗑️ Reset semua data</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="🔍 Cari link atau deskripsi…" autocomplete="off">
+    <div id="chips" class="chips"></div>
+  </div>
+
+  <div id="empty" class="empty hidden">
+    <div class="empty-icon">📭</div>
+    <h2>Belum ada link</h2>
+    <p>Tambahkan link web app pertama kamu lewat tombol <b>＋ Tambah Link</b>.</p>
+  </div>
+
+  <div id="grid" class="grid"></div>
+</main>
+
+<footer>
+  <p>LinkHub • data tersimpan otomatis di browser ini • backup rutin lewat Export JSON 💾</p>
+</footer>
+
+<!-- Modal tambah / edit -->
+<div id="modal" class="modal hidden">
+  <div class="modal-card">
+    <h2 id="modalTitle">Tambah Link</h2>
+    <form id="form" autocomplete="off">
+      <label>Nama link <span>*</span>
+        <input id="fName" type="text" required maxlength="80" placeholder="cth: Puskesdoc Generator">
+      </label>
+      <label>URL <span>*</span>
+        <input id="fUrl" type="text" required inputmode="url" placeholder="https://…">
+      </label>
+      <label>Deskripsi
+        <textarea id="fDesc" rows="2" maxlength="200" placeholder="Keterangan singkat (opsional)"></textarea>
+      </label>
+      <div class="row2">
+        <label>Kategori
+          <input id="fCat" type="text" maxlength="40" placeholder="cth: Kerja" list="catList">
+          <datalist id="catList"></datalist>
+        </label>
+        <label class="check">
+          <input id="fPin" type="checkbox"> 📌 Sematkan (pin)
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="btnCancel" class="btn ghost">Batal</button>
+        <button type="submit" class="btn primary">💾 Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<input id="fileInput" type="file" accept="application/json" hidden>
+
+<script src="app.js"></script>
+</body>
+</html>
