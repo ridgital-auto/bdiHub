@@ -1,10 +1,11 @@
 # LinkHub
 
-Dashboard sederhana kumpulan link web app — jalan di GitHub Pages.
+Dashboard kumpulan link web app — jalan di GitHub Pages.
 
-- Tambah / edit / hapus link (nama, URL, deskripsi, kategori, pin)
-- Cari + filter kategori
-- Hitung jumlah dibuka
-- Export / import JSON (backup)
+- Proyek: wadah kumpulan link (tambah/edit/hapus proyek; hapus proyek memindahkan link ke "Tanpa proyek")
+- Link: tambah/edit/hapus (nama, URL, deskripsi, proyek, pin), salin URL
+- Filter chip per proyek + "Tanpa proyek", cari link
+- Hitung jumlah dibuka, sematkan favorit
+- Export/import JSON (backup; format lama otomatis dimigrasi, kategori lama jadi proyek)
 
 Live: https://ridgital-auto.github.io/linkhub/

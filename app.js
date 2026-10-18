@@ -1,19 +1,58 @@
-/* LinkHub — simpan, cari, dan buka kumpulan link web app */
-const KEY = "linkhub.links.v1";
+/* LinkHub v2 — link dikelompokkan per proyek */
+const KEY = "linkhub.links.v1"; // key lama dipakai ulang, isi dimigrasi ke v2
 const $ = (id) => document.getElementById(id);
 
-let links = load();
-let activeCat = "Semua";
-let editingId = null;
+let store = load();          // {version, projects:[], links:[]}
+let activeProject = "all";   // "all" | projectId | "none"
+let editingLinkId = null;
+let editingProjectId = null;
 
-function load() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
-}
-function save() { localStorage.setItem(KEY, JSON.stringify(links)); }
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+
+/* ---------- load + migrasi v1 -> v2 ---------- */
+function load() {
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(KEY)); } catch { /* abaikan */ }
+
+  if (Array.isArray(raw)) return migrateV1(raw);              // format lama: array link
+  if (raw && raw.version === 2) return sanitize(raw);
+  return { version: 2, projects: [], links: [] };
+}
+function migrateV1(links) {
+  const projects = [];
+  const byCat = {};
+  links.forEach(l => {
+    const cat = (l.cat || "").trim();
+    if (cat && !byCat[cat]) {
+      const p = { id: uid(), name: cat, desc: "", added: Date.now() };
+      projects.push(p); byCat[cat] = p.id;
+    }
+  });
+  return {
+    version: 2,
+    projects,
+    links: links.map(l => ({
+      id: l.id || uid(),
+      name: l.name || "Tanpa nama",
+      url: l.url || "",
+      desc: l.desc || "",
+      projectId: (l.cat || "").trim() ? byCat[(l.cat || "").trim()] : null,
+      pinned: !!l.pinned,
+      hits: l.hits || 0,
+      added: l.added || Date.now()
+    }))
+  };
+}
+function sanitize(s) {
+  return {
+    version: 2,
+    projects: Array.isArray(s.projects) ? s.projects : [],
+    links: Array.isArray(s.links) ? s.links : []
+  };
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(store)); }
 
 function normUrl(u) {
   u = u.trim();
@@ -23,27 +62,36 @@ function normUrl(u) {
 function domainOf(u) {
   try { return new URL(u).hostname.replace(/^www\./, ""); } catch { return u; }
 }
+function projectName(id) {
+  const p = store.projects.find(x => x.id === id);
+  return p ? p.name : "Tanpa proyek";
+}
+function countIn(id) { return store.links.filter(l => l.projectId === id).length; }
+function unassigned() { return store.links.filter(l => !l.projectId); }
 
 /* ---------- render ---------- */
 function render() {
   const q = $("search").value.trim().toLowerCase();
-  const cats = [...new Set(links.map(l => l.cat).filter(Boolean))].sort();
 
-  // chips
+  // chips proyek
   const chipBox = $("chips");
   chipBox.innerHTML = "";
-  ["Semua", ...cats].forEach(c => {
+  const mkChip = (key, label, count) => {
     const b = document.createElement("button");
-    b.className = "chip" + (c === activeCat ? " active" : "");
-    b.textContent = c;
-    b.onclick = () => { activeCat = c; render(); };
+    b.className = "chip" + (key === activeProject ? " active" : "");
+    b.innerHTML = esc(label) + (count != null ? ` <span class="cnt">${count}</span>` : "");
+    b.onclick = () => { activeProject = key; render(); };
     chipBox.appendChild(b);
-  });
-  if (activeCat !== "Semua" && !cats.includes(activeCat)) activeCat = "Semua";
+  };
+  mkChip("all", "Semua", store.links.length);
+  store.projects.forEach(p => mkChip(p.id, "📁 " + p.name, countIn(p.id)));
+  if (unassigned().length) mkChip("none", "Tanpa proyek", unassigned().length);
+  if (activeProject !== "all" && activeProject !== "none" &&
+      !store.projects.some(p => p.id === activeProject)) activeProject = "all";
 
-  // cards
-  let list = links.filter(l =>
-    (activeCat === "Semua" || l.cat === activeCat) &&
+  // daftar link sesuai filter
+  let list = store.links.filter(l =>
+    (activeProject === "all" || (activeProject === "none" ? !l.projectId : l.projectId === activeProject)) &&
     (!q || (l.name + " " + (l.desc || "") + " " + domainOf(l.url)).toLowerCase().includes(q))
   );
   list = [...list].sort((a, b) =>
@@ -52,12 +100,19 @@ function render() {
 
   const grid = $("grid");
   grid.innerHTML = "";
-  $("empty").classList.toggle("hidden", links.length > 0);
+  const totalEmpty = store.links.length === 0;
+  $("empty").classList.toggle("hidden", !totalEmpty && list.length > 0);
+  if (totalEmpty) {
+    $("emptyTitle").textContent = "Belum ada link";
+    $("emptyText").innerHTML = "Tambahkan link web app pertama kamu lewat tombol <b>＋ Tambah Link</b>.";
+  } else if (list.length === 0) {
+    $("emptyTitle").textContent = "Tidak ada link di sini";
+    $("emptyText").innerHTML = q
+      ? "Tidak ketemu. Coba kata kunci lain."
+      : `Proyek <b>${esc(projectName(activeProject))}</b> belum ada link. Klik <b>＋ Tambah Link</b> untuk menambahkannya ke proyek ini.`;
+  }
 
   list.forEach(l => grid.appendChild(card(l)));
-
-  // datalist kategori
-  $("catList").innerHTML = cats.map(c => `<option value="${esc(c)}">`).join("");
 }
 
 function card(l) {
@@ -77,7 +132,7 @@ function card(l) {
         </div>
       </div>
     </div>
-    ${l.cat ? `<span class="badge">${esc(l.cat)}</span>` : ""}
+    <span class="badge">📁 ${esc(projectName(l.projectId))}</span>
     ${l.desc ? `<p class="desc">${esc(l.desc)}</p>` : ""}
     <div class="card-foot">
       <div>
@@ -100,38 +155,43 @@ function card(l) {
     toggle.classList.add("hidden");
     if (act === "visit") el.querySelector(".visit").click();
     if (act === "pin") { l.pinned = !l.pinned; save(); render(); }
-    if (act === "edit") openModal(l);
+    if (act === "edit") openLinkModal(l);
     if (act === "copy") { navigator.clipboard.writeText(l.url).then(() => alert("URL tersalin ✅")); }
     if (act === "del" && confirm(`Hapus "${l.name}"?`)) {
-      links = links.filter(x => x.id !== l.id); save(); render();
+      store.links = store.links.filter(x => x.id !== l.id); save(); render();
     }
   };
   return el;
 }
-document.addEventListener("click", () =>
-  document.querySelectorAll(".tools-menu").forEach(m => m.classList.add("hidden")));
+document.addEventListener("click", () => {
+  document.querySelectorAll(".tools-menu").forEach(m => m.classList.add("hidden"));
+  $("menu").classList.add("hidden");
+});
 
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-
-/* ---------- modal ---------- */
-function openModal(l) {
-  editingId = l?.id || null;
+/* ---------- modal link ---------- */
+function fillProjectSelect(sel, selectedId) {
+  sel.innerHTML =
+    `<option value="">— Tanpa proyek —</option>` +
+    store.projects.map(p => `<option value="${p.id}"${p.id === selectedId ? " selected" : ""}>${esc(p.name)}</option>`).join("");
+}
+function openLinkModal(l) {
+  editingLinkId = l?.id || null;
   $("modalTitle").textContent = l ? "Edit Link" : "Tambah Link";
+  const defProj = l ? l.projectId : (activeProject !== "all" && activeProject !== "none" ? activeProject : null);
+  $("modalSub").textContent = l ? "" : (defProj ? `Akan ditambahkan ke proyek: ${projectName(defProj)}` : "Pilih proyek untuk link ini (opsional).");
   $("fName").value = l?.name || "";
   $("fUrl").value = l?.url || "";
   $("fDesc").value = l?.desc || "";
-  $("fCat").value = l?.cat || "";
+  fillProjectSelect($("fProject"), defProj);
   $("fPin").checked = !!l?.pinned;
   $("modal").classList.remove("hidden");
   $("fName").focus();
 }
-function closeModal() { $("modal").classList.add("hidden"); editingId = null; }
+function closeLinkModal() { $("modal").classList.add("hidden"); editingLinkId = null; }
 
-$("btnAdd").onclick = () => openModal(null);
-$("btnCancel").onclick = closeModal;
-$("modal").addEventListener("click", e => { if (e.target === $("modal")) closeModal(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+$("btnAdd").onclick = () => openLinkModal(null);
+$("btnCancel").onclick = closeLinkModal;
+$("modal").addEventListener("click", e => { if (e.target === $("modal")) closeLinkModal(); });
 
 $("form").onsubmit = (e) => {
   e.preventDefault();
@@ -139,27 +199,105 @@ $("form").onsubmit = (e) => {
   const url = normUrl($("fUrl").value);
   if (!name || !url) return;
   const data = {
-    name,
-    url,
+    name, url,
     desc: $("fDesc").value.trim(),
-    cat: $("fCat").value.trim(),
+    projectId: $("fProject").value || null,
     pinned: $("fPin").checked
   };
-  if (editingId) {
-    const l = links.find(x => x.id === editingId);
+  if (editingLinkId) {
+    const l = store.links.find(x => x.id === editingLinkId);
     if (l) Object.assign(l, data);
   } else {
-    links.unshift({ id: uid(), hits: 0, added: Date.now(), ...data });
+    store.links.unshift({ id: uid(), hits: 0, added: Date.now(), ...data });
   }
-  save(); closeModal(); render();
+  save(); closeLinkModal(); render();
 };
+
+/* ---------- modal proyek ---------- */
+function openProjectModal(p) {
+  editingProjectId = p?.id || null;
+  $("pmodalTitle").textContent = p ? "Edit Proyek" : "Tambah Proyek";
+  $("pName").value = p?.name || "";
+  $("pDesc").value = p?.desc || "";
+  $("pmodal").classList.remove("hidden");
+  $("pName").focus();
+}
+function closeProjectModal() { $("pmodal").classList.add("hidden"); editingProjectId = null; }
+
+$("btnAddProject").onclick = () => openProjectModal(null);
+$("pbtnCancel").onclick = closeProjectModal;
+$("pmodal").addEventListener("click", e => { if (e.target === $("pmodal")) closeProjectModal(); });
+
+$("pform").onsubmit = (e) => {
+  e.preventDefault();
+  const name = $("pName").value.trim();
+  if (!name) return;
+  if (editingProjectId) {
+    const p = store.projects.find(x => x.id === editingProjectId);
+    if (p) { p.name = name; p.desc = $("pDesc").value.trim(); }
+  } else {
+    store.projects.push({ id: uid(), name, desc: $("pDesc").value.trim(), added: Date.now() });
+  }
+  save(); closeProjectModal(); render();
+};
+
+/* ---------- kelola proyek ---------- */
+function openManage() {
+  renderProjectList();
+  $("mmodal").classList.remove("hidden");
+}
+function renderProjectList() {
+  const box = $("projectList");
+  box.innerHTML = "";
+  if (!store.projects.length) {
+    box.innerHTML = `<p class="muted">Belum ada proyek. Buat lewat tombol <b>＋ Proyek</b>.</p>`;
+    return;
+  }
+  store.projects.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "proj-row";
+    row.innerHTML = `
+      <div class="proj-info">
+        <b>📁 ${esc(p.name)}</b>
+        <span class="muted">${countIn(p.id)} link</span>
+        ${p.desc ? `<div class="muted small">${esc(p.desc)}</div>` : ""}
+      </div>
+      <div class="proj-btns">
+        <button class="btn sm" data-act="view">👁️ Lihat</button>
+        <button class="btn sm" data-act="edit">✏️</button>
+        <button class="btn sm danger" data-act="del">🗑️</button>
+      </div>`;
+    row.querySelector('[data-act="view"]').onclick = () => {
+      activeProject = p.id; $("mmodal").classList.add("hidden"); render();
+    };
+    row.querySelector('[data-act="edit"]').onclick = () => {
+      $("mmodal").classList.add("hidden"); openProjectModal(p);
+    };
+    row.querySelector('[data-act="del"]').onclick = () => {
+      const n = countIn(p.id);
+      if (confirm(`Hapus proyek "${p.name}"?${n ? `\n${n} link di dalamnya akan pindah ke "Tanpa proyek".` : ""}`)) {
+        store.links.forEach(l => { if (l.projectId === p.id) l.projectId = null; });
+        store.projects = store.projects.filter(x => x.id !== p.id);
+        if (activeProject === p.id) activeProject = "all";
+        save(); renderProjectList(); render();
+      }
+    };
+    box.appendChild(row);
+  });
+}
+$("btnManageProjects").onclick = () => { $("menu").classList.add("hidden"); openManage(); };
+$("mbtnClose").onclick = () => $("mmodal").classList.add("hidden");
+$("mmodal").addEventListener("click", e => { if (e.target === $("mmodal")) $("mmodal").classList.add("hidden"); });
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeLinkModal(); closeProjectModal(); $("mmodal").classList.add("hidden"); }
+});
 
 /* ---------- menu: export / import / reset ---------- */
 $("btnMenu").onclick = (e) => { e.stopPropagation(); $("menu").classList.toggle("hidden"); };
-document.addEventListener("click", () => $("menu").classList.add("hidden"));
 
 $("btnExport").onclick = () => {
-  const blob = new Blob([JSON.stringify(links, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(store, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = "linkhub-backup-" + new Date().toISOString().slice(0, 10) + ".json";
@@ -175,15 +313,30 @@ $("fileInput").onchange = (e) => {
   const r = new FileReader();
   r.onload = () => {
     try {
-      const data = JSON.parse(r.result);
-      if (!Array.isArray(data)) throw 0;
-      if (confirm(`Import ${data.length} link? (data lama akan digabung)`)) {
-        const ids = new Set(links.map(l => l.id));
-        data.forEach(d => {
-          if (!d.name || !d.url) return;
-          if (!d.id || ids.has(d.id)) d.id = uid();
-          ids.add(d.id);
-          links.push({ hits: 0, added: Date.now(), desc: "", cat: "", pinned: false, ...d });
+      let data = JSON.parse(r.result);
+      // dukung format lama (array link) maupun v2
+      if (Array.isArray(data)) data = migrateV1(data);
+      if (!data || !Array.isArray(data.links)) throw 0;
+      if (confirm(`Import ${data.links.length} link & ${(data.projects || []).length} proyek? (digabung dengan data lama)`)) {
+        const pIds = new Set(store.projects.map(p => p.id));
+        const lIds = new Set(store.links.map(l => l.id));
+        const pMap = {}; // id lama -> id baru (utk relasi link)
+        (data.projects || []).forEach(p => {
+          if (!p.name) return;
+          const oldId = p.id;
+          if (!oldId || pIds.has(oldId)) p.id = uid();
+          pIds.add(p.id);
+          if (oldId) pMap[oldId] = p.id;
+          store.projects.push({ id: p.id, name: p.name, desc: p.desc || "", added: p.added || Date.now() });
+        });
+        data.links.forEach(l => {
+          if (!l.name || !l.url) return;
+          if (!l.id || lIds.has(l.id)) l.id = uid();
+          lIds.add(l.id);
+          let pid = l.projectId || null;
+          if (pid && pMap[pid]) pid = pMap[pid];
+          if (pid && !pIds.has(pid)) pid = null;
+          store.links.push({ id: l.id, name: l.name, url: l.url, desc: l.desc || "", projectId: pid, pinned: !!l.pinned, hits: l.hits || 0, added: l.added || Date.now() });
         });
         save(); render(); alert("Import selesai ✅");
       }
@@ -194,8 +347,10 @@ $("fileInput").onchange = (e) => {
 };
 
 $("btnReset").onclick = () => {
-  if (confirm("Hapus SEMUA link? Pastikan sudah export backup dulu!")) {
-    links = []; save(); render();
+  if (confirm("Hapus SEMUA proyek dan link? Pastikan sudah export backup dulu!")) {
+    store = { version: 2, projects: [], links: [] };
+    activeProject = "all";
+    save(); render();
   }
   $("menu").classList.add("hidden");
 };

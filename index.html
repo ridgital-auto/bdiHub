@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LinkHub — Kumpulan Link Web App</title>
-<meta name="description" content="Dashboard kumpulan link web app saya">
+<meta name="description" content="Dashboard kumpulan link web app, dikelompokkan per proyek">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -14,14 +14,16 @@
     <span class="logo">🔗</span>
     <div>
       <h1>LinkHub</h1>
-      <p>Kumpulan link web app saya</p>
+      <p>Link web app per proyek</p>
     </div>
   </div>
   <div class="actions">
+    <button id="btnAddProject" class="btn">＋ Proyek</button>
     <button id="btnAdd" class="btn primary">＋ Tambah Link</button>
     <div class="menu-wrap">
       <button id="btnMenu" class="btn ghost" title="Pengaturan">⚙️</button>
       <div id="menu" class="dropdown hidden">
+        <button id="btnManageProjects">📁 Kelola proyek</button>
         <button id="btnExport">⬇️ Export data (JSON)</button>
         <button id="btnImport">⬆️ Import data (JSON)</button>
         <button id="btnReset" class="danger">🗑️ Reset semua data</button>
@@ -38,8 +40,8 @@
 
   <div id="empty" class="empty hidden">
     <div class="empty-icon">📭</div>
-    <h2>Belum ada link</h2>
-    <p>Tambahkan link web app pertama kamu lewat tombol <b>＋ Tambah Link</b>.</p>
+    <h2 id="emptyTitle">Belum ada link</h2>
+    <p id="emptyText">Tambahkan link web app pertama kamu lewat tombol <b>＋ Tambah Link</b>.</p>
   </div>
 
   <div id="grid" class="grid"></div>
@@ -49,10 +51,11 @@
   <p>LinkHub • data tersimpan otomatis di browser ini • backup rutin lewat Export JSON 💾</p>
 </footer>
 
-<!-- Modal tambah / edit -->
+<!-- Modal tambah / edit link -->
 <div id="modal" class="modal hidden">
   <div class="modal-card">
     <h2 id="modalTitle">Tambah Link</h2>
+    <p id="modalSub" class="modal-sub"></p>
     <form id="form" autocomplete="off">
       <label>Nama link <span>*</span>
         <input id="fName" type="text" required maxlength="80" placeholder="cth: Puskesdoc Generator">
@@ -64,9 +67,8 @@
         <textarea id="fDesc" rows="2" maxlength="200" placeholder="Keterangan singkat (opsional)"></textarea>
       </label>
       <div class="row2">
-        <label>Kategori
-          <input id="fCat" type="text" maxlength="40" placeholder="cth: Kerja" list="catList">
-          <datalist id="catList"></datalist>
+        <label>Proyek
+          <select id="fProject"></select>
         </label>
         <label class="check">
           <input id="fPin" type="checkbox"> 📌 Sematkan (pin)
@@ -77,6 +79,36 @@
         <button type="submit" class="btn primary">💾 Simpan</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- Modal tambah / edit proyek -->
+<div id="pmodal" class="modal hidden">
+  <div class="modal-card">
+    <h2 id="pmodalTitle">Tambah Proyek</h2>
+    <form id="pform" autocomplete="off">
+      <label>Nama proyek <span>*</span>
+        <input id="pName" type="text" required maxlength="60" placeholder="cth: Kerja Puskesmas">
+      </label>
+      <label>Deskripsi
+        <textarea id="pDesc" rows="2" maxlength="200" placeholder="Keterangan singkat (opsional)"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" id="pbtnCancel" class="btn ghost">Batal</button>
+        <button type="submit" class="btn primary">💾 Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal kelola proyek -->
+<div id="mmodal" class="modal hidden">
+  <div class="modal-card wide">
+    <h2>Kelola Proyek</h2>
+    <div id="projectList" class="project-list"></div>
+    <div class="modal-actions">
+      <button id="mbtnClose" class="btn primary">Tutup</button>
+    </div>
   </div>
 </div>
 
