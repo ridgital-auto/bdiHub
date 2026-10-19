@@ -1,12 +1,12 @@
-/* LinkHub Google Drive sync — login Google + backup otomatis.
+/* bdiHub Google Drive sync — login Google + backup otomatis.
    Memakai SATU OAuth Client ID bersama (milik pengelola aplikasi, identifier
    publik — aman dipasang di kode client-side), pola yang sama dengan Puskesdoc. */
 const GOOGLE_CLIENT_ID = "909196579559-egqlen997lr6a1jp9nrt0dagqvslksa9.apps.googleusercontent.com";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
 /* openid+email+profile: agar bisa membaca email & nama pengguna untuk label admin */
 const LOGIN_SCOPE = DRIVE_SCOPE + " openid email profile";
-const BACKUP_FOLDER = "LinkHub";
-const BACKUP_FILE = "linkhub-backup.json";
+const BACKUP_FOLDER = "bdiHub";
+const BACKUP_FILE = "bdihub-backup.json";
 const ADMIN_EMAIL = "ridgitalstudio@gmail.com";
 const USER_KEY = "linkhub.user.v1";
 
@@ -120,7 +120,42 @@ const DriveSync = {
     const q = encodeURIComponent(`name = '${BACKUP_FILE}' and '${folderId}' in parents and trashed = false`);
     const data = await this.api(`/drive/v3/files?q=${q}&fields=files(id,modifiedTime)`);
     this.fileId = data.files?.[0]?.id || null;
+    if (!this.fileId) await this.migrateOldBackup();
     return this.fileId;
+  },
+
+  // Sekali saja: pindahkan backup lama (folder "LinkHub"/linkhub-backup.json) ke lokasi baru.
+  async migrateOldBackup() {
+    try {
+      const qf = encodeURIComponent(`name = 'LinkHub' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+      const fd = await this.api(`/drive/v3/files?q=${qf}&fields=files(id)`);
+      if (!fd.files?.length) return;
+      const oldFolderId = fd.files[0].id;
+      if (oldFolderId === this.folderId) return;
+      const q = encodeURIComponent(`name = 'linkhub-backup.json' and '${oldFolderId}' in parents and trashed = false`);
+      const data = await this.api(`/drive/v3/files?q=${q}&fields=files(id)`);
+      if (!data.files?.length) return;
+      const oldId = data.files[0].id;
+      const oldData = await this.api(`/drive/v3/files/${oldId}?alt=media`);
+      const parsed = typeof oldData === "string" ? JSON.parse(oldData) : oldData;
+      if (!parsed || !Array.isArray(parsed.links)) return;
+      // tulis ke lokasi baru, lalu hapus file lama
+      const body = JSON.stringify({ version: 2, updatedAt: parsed.updatedAt || Date.now(), projects: parsed.projects || [], links: parsed.links });
+      const metadata = { name: BACKUP_FILE, parents: [this.folderId] };
+      const boundary = "bh" + Date.now();
+      const multipart =
+        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+        JSON.stringify(metadata) +
+        `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n` + body +
+        `\r\n--${boundary}--`;
+      const created = await this.api("/upload/drive/v3/files?uploadType=multipart", {
+        method: "POST",
+        headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+        body: multipart,
+      });
+      this.fileId = created.id;
+      await this.api(`/drive/v3/files/${oldId}`, { method: "DELETE" }).catch(() => {});
+    } catch { /* migrasi gagal — abaikan, sinkron normal tetap jalan */ }
   },
 
   async downloadBackup() {

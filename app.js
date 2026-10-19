@@ -1,5 +1,6 @@
-/* LinkHub v2 — link dikelompokkan per proyek */
-const KEY = "linkhub.links.v1"; // key lama dipakai ulang, isi dimigrasi ke v2
+/* bdiHub — link dikelompokkan per proyek */
+const KEY = "bdihub.data.v1";
+const OLD_KEY = "linkhub.links.v1"; // kunci lama — dimigrasi otomatis sekali saja
 const $ = (id) => document.getElementById(id);
 
 let store = load();          // {version, projects:[], links:[]}
@@ -15,10 +16,25 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 function load() {
   let raw = null;
   try { raw = JSON.parse(localStorage.getItem(KEY)); } catch { /* abaikan */ }
+  let fromOldKey = false;
+  if (!raw) {
+    try { raw = JSON.parse(localStorage.getItem(OLD_KEY)); } catch { /* abaikan */ }
+    fromOldKey = !!raw;
+  }
 
-  if (Array.isArray(raw)) return migrateV1(raw);              // format lama: array link
-  if (raw && raw.version === 2) return sanitize(raw);
-  return { version: 2, projects: [], links: [] };
+  let out;
+  if (Array.isArray(raw)) out = migrateV1(raw);              // format lama: array link
+  else if (raw && raw.version === 2) out = sanitize(raw);
+  else out = { version: 2, updatedAt: 0, projects: [], links: [] };
+
+  if (fromOldKey) {
+    // pindahkan ke kunci baru sekali saja, lalu hapus kunci lama
+    try {
+      localStorage.setItem(KEY, JSON.stringify(out));
+      localStorage.removeItem(OLD_KEY);
+    } catch { /* abaikan */ }
+  }
+  return out;
 }
 function migrateV1(links) {
   const projects = [];
@@ -306,7 +322,7 @@ $("btnExport").onclick = () => {
   const blob = new Blob([JSON.stringify(store, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = "linkhub-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+  a.download = "bdihub-backup-" + new Date().toISOString().slice(0, 10) + ".json";
   a.click();
   URL.revokeObjectURL(a.href);
   $("menu").classList.add("hidden");
