@@ -12,6 +12,10 @@ const USER_KEY = "linkhub.user.v1";
 
 const DriveSync = {
   token: null,
+  tokenExpiresAt: 0,
+  _tc: null,
+  _pending: null,
+  _refreshCooldownUntil: 0,
   user: null,            // {email, name, picture}
   folderId: null,
   fileId: null,
@@ -35,29 +39,60 @@ const DriveSync = {
     });
   },
 
-  async login() {
-    try {
-      await this.ensureGis();
-      const client = window.google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CLIENT_ID,
-        scope: LOGIN_SCOPE,
-        callback: (resp) => {
-          if (resp && resp.access_token) this.onToken(resp.access_token);
-          else this.setStatus("error", "Login dibatalkan");
-        },
-      });
-      client.requestAccessToken({ prompt: "" });
-    } catch (e) {
-      alert(e.message || "Gagal login Google");
-    }
+  ensureTokenClient() {
+    if (this._tc) return this._tc;
+    this._tc = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: LOGIN_SCOPE,
+      callback: (resp) => {
+        const ok = !!(resp && resp.access_token);
+        if (ok) {
+          this.token = resp.access_token;
+          this.tokenExpiresAt = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+          this._refreshCooldownUntil = 0;
+        }
+        if (this._pending) { const r = this._pending; this._pending = null; r(ok); }
+      },
+    });
+    return this._tc;
   },
 
-  async onToken(token) {
-    this.token = token;
+  // Minta token baru. HARUS dipanggil dari gestur pengguna (klik) agar popup tidak diblokir browser.
+  requestTokenNow() {
+    return new Promise((resolve) => {
+      this._pending = resolve;
+      try {
+        this.ensureTokenClient().requestAccessToken();
+        setTimeout(() => { if (this._pending) { this._pending = null; resolve(false); } }, 45000);
+      } catch { this._pending = null; resolve(false); }
+    });
+  },
+
+  // true kalau token masih berlaku; kalau tidak, coba perpanjang diam-diam (butuh gestur pengguna).
+  async ensureToken() {
+    if (this.token && Date.now() < this.tokenExpiresAt - 60000) return true;
+    if (!this.user) return false;
+    if (Date.now() < this._refreshCooldownUntil) return false;
+    const ok = await this.requestTokenNow();
+    if (!ok) this._refreshCooldownUntil = Date.now() + 10 * 60 * 1000;
+    return ok && !!this.token;
+  },
+
+  async login() {
+    try { await this.ensureGis(); }
+    catch (e) { alert(e.message || "Gagal login Google"); return; }
+    const ok = await this.requestTokenNow();
+    if (!ok) { this.setStatus("error", "Login dibatalkan"); this.renderAuth(); return; }
+    await this.fetchUser();
+    this.renderAuth();
+    await this.initialSync();
+  },
+
+  async fetchUser() {
     let me = null;
     try {
       me = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: "Bearer " + token },
+        headers: { Authorization: "Bearer " + this.token },
       }).then(r => r.json());
     } catch { me = null; }
     if (me && me.email) {
@@ -68,8 +103,6 @@ const DriveSync = {
       try { this.user = JSON.parse(localStorage.getItem(USER_KEY)); } catch { this.user = null; }
       if (!this.user) this.user = { email: "", name: "", picture: "" };
     }
-    this.renderAuth();
-    await this.initialSync();
   },
 
   logout() {
@@ -230,16 +263,30 @@ const DriveSync = {
   },
 
   onLocalChange() {
-    if (!this.token || !this.user) return;
+    if (!this.user) return;
     clearTimeout(this.syncTimer);
-    this.setStatus("pending", "Akan disinkronkan…");
-    this.renderAuth();
-    this.syncTimer = setTimeout(() => this.uploadNow(), 2500);
+    // Perpanjang token selagi masih dalam gestur pengguna (klik tombol) —
+    // Google menerbitkan token baru diam-diam, jadi sesi tidak putus tiap jam.
+    this.ensureToken().then((ok) => {
+      if (!ok || !this.token) {
+        this.setStatus("expired", "Sesi Google berakhir — klik 🔑 untuk login ulang");
+        this.renderAuth();
+        return;
+      }
+      this.setStatus("pending", "Akan disinkronkan…");
+      this.renderAuth();
+      this.syncTimer = setTimeout(() => this.uploadNow(), 2500);
+    });
   },
 
   async uploadNow() {
-    if (!this.token || !this.user) return;
     clearTimeout(this.syncTimer);
+    const ok = await this.ensureToken();
+    if (!ok || !this.token) {
+      this.setStatus("expired", "Sesi Google berakhir — klik 🔑 untuk login ulang");
+      this.renderAuth();
+      return;
+    }
     this.setStatus("syncing", "Menyinkronkan…");
     this.renderAuth();
     try {
