@@ -137,14 +137,45 @@ function render() {
   list.forEach(l => grid.appendChild(card(l)));
 }
 
+/* favicon tiap web app: coba file icon di path-nya dulu (GitHub Pages project
+   berbagi satu domain, jadi layanan s2 Google yang berbasis domain tidak bisa
+   membedakan), baru fallback ke s2, terakhir icon globe. */
+function faviconCandidates(url) {
+  const list = [];
+  try {
+    const u = new URL(url);
+    let p = u.pathname;
+    if (p && p !== "/") {
+      if (!p.endsWith("/")) p = p.slice(0, p.lastIndexOf("/") + 1);
+      const base = u.origin + p;
+      ["favicon.ico", "favicon.svg", "icon.svg", "favicon-32.png", "apple-touch-icon.png", "img/favicon.ico"]
+        .forEach(f => list.push(base + f));
+    }
+    list.push("https://www.google.com/s2/favicons?domain=" + encodeURIComponent(u.hostname) + "&sz=64");
+  } catch { /* abaikan */ }
+  return list;
+}
+function attachFavicon(wrap, url) {
+  const cands = faviconCandidates(url);
+  if (!cands.length) return;
+  const img = document.createElement("img");
+  img.className = "fav";
+  img.loading = "lazy";
+  img.alt = "";
+  img.referrerPolicy = "no-referrer";
+  let i = 0;
+  img.onerror = () => { i++; if (i < cands.length) img.src = cands[i]; else img.remove(); };
+  img.src = cands[0];
+  wrap.appendChild(img);
+}
+
 function card(l) {
   const el = document.createElement("div");
   el.className = "card" + (l.pinned ? " pinned" : "");
   const dom = domainOf(l.url);
-  const favUrl = "https://www.google.com/s2/favicons?domain=" + encodeURIComponent(dom) + "&sz=64";
   el.innerHTML = `
     <div class="card-head">
-      <span class="favwrap" title="${esc(dom)}">🌐<img class="fav" loading="lazy" src="${favUrl}" alt="" onerror="this.remove()"></span>
+      <span class="favwrap" title="${esc(dom)}">🌐</span>
       <h3>${l.pinned ? '<span class="pin">📌</span>' : ""}${esc(l.name)}</h3>
       <div class="card-tools">
         <button title="Opsi">⋮</button>
@@ -167,6 +198,7 @@ function card(l) {
     </div>`;
 
   const toggle = el.querySelector(".tools-menu");
+  attachFavicon(el.querySelector(".favwrap"), l.url);
   el.querySelector(".card-tools > button").onclick = (e) => {
     e.stopPropagation();
     document.querySelectorAll(".tools-menu").forEach(m => m !== toggle && m.classList.add("hidden"));
