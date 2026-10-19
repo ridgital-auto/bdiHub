@@ -3,6 +3,8 @@
    publik — aman dipasang di kode client-side), pola yang sama dengan Puskesdoc. */
 const GOOGLE_CLIENT_ID = "909196579559-egqlen997lr6a1jp9nrt0dagqvslksa9.apps.googleusercontent.com";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+/* openid+email+profile: agar bisa membaca email & nama pengguna untuk label admin */
+const LOGIN_SCOPE = DRIVE_SCOPE + " openid email profile";
 const BACKUP_FOLDER = "LinkHub";
 const BACKUP_FILE = "linkhub-backup.json";
 const ADMIN_EMAIL = "ridgitalstudio@gmail.com";
@@ -38,7 +40,7 @@ const DriveSync = {
       await this.ensureGis();
       const client = window.google.accounts.oauth2.initTokenClient({
         client_id: GOOGLE_CLIENT_ID,
-        scope: DRIVE_SCOPE,
+        scope: LOGIN_SCOPE,
         callback: (resp) => {
           if (resp && resp.access_token) this.onToken(resp.access_token);
           else this.setStatus("error", "Login dibatalkan");
@@ -52,14 +54,19 @@ const DriveSync = {
 
   async onToken(token) {
     this.token = token;
+    let me = null;
     try {
-      const me = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      me = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
         headers: { Authorization: "Bearer " + token },
       }).then(r => r.json());
+    } catch { me = null; }
+    if (me && me.email) {
       this.user = { email: me.email, name: me.name, picture: me.picture };
       localStorage.setItem(USER_KEY, JSON.stringify(this.user));
-    } catch {
-      this.user = { email: "", name: "", picture: "" };
+    } else {
+      // profil gagal dibaca — pertahankan data user lama kalau ada
+      try { this.user = JSON.parse(localStorage.getItem(USER_KEY)); } catch { this.user = null; }
+      if (!this.user) this.user = { email: "", name: "", picture: "" };
     }
     this.renderAuth();
     await this.initialSync();
