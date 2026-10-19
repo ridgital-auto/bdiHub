@@ -1,0 +1,237 @@
+/* LinkHub Google Drive sync — login Google + backup otomatis.
+   Memakai SATU OAuth Client ID bersama (milik pengelola aplikasi, identifier
+   publik — aman dipasang di kode client-side), pola yang sama dengan Puskesdoc. */
+const GOOGLE_CLIENT_ID = "909196579559-egqlen997lr6a1jp9nrt0dagqvslksa9.apps.googleusercontent.com";
+const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.file";
+const BACKUP_FOLDER = "LinkHub";
+const BACKUP_FILE = "linkhub-backup.json";
+const ADMIN_EMAIL = "ridgitalstudio@gmail.com";
+const USER_KEY = "linkhub.user.v1";
+
+const DriveSync = {
+  token: null,
+  user: null,            // {email, name, picture}
+  folderId: null,
+  fileId: null,
+  syncTimer: null,
+  status: "off",         // off | pending | syncing | ok | expired | error
+  statusMsg: "",
+
+  init() {
+    try { this.user = JSON.parse(localStorage.getItem(USER_KEY)); } catch { this.user = null; }
+    this.renderAuth();
+  },
+
+  /* ---------- auth ---------- */
+  ensureGis() {
+    return new Promise((resolve, reject) => {
+      let n = 0;
+      const t = setInterval(() => {
+        if (window.google?.accounts?.oauth2) { clearInterval(t); resolve(); }
+        else if (++n > 100) { clearInterval(t); reject(new Error("Gagal memuat login Google. Periksa koneksi internet.")); }
+      }, 100);
+    });
+  },
+
+  async login() {
+    try {
+      await this.ensureGis();
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: DRIVE_SCOPE,
+        callback: (resp) => {
+          if (resp && resp.access_token) this.onToken(resp.access_token);
+          else this.setStatus("error", "Login dibatalkan");
+        },
+      });
+      client.requestAccessToken({ prompt: "" });
+    } catch (e) {
+      alert(e.message || "Gagal login Google");
+    }
+  },
+
+  async onToken(token) {
+    this.token = token;
+    try {
+      const me = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+        headers: { Authorization: "Bearer " + token },
+      }).then(r => r.json());
+      this.user = { email: me.email, name: me.name, picture: me.picture };
+      localStorage.setItem(USER_KEY, JSON.stringify(this.user));
+    } catch {
+      this.user = { email: "", name: "", picture: "" };
+    }
+    this.renderAuth();
+    await this.initialSync();
+  },
+
+  logout() {
+    if (this.token) {
+      fetch("https://oauth2.googleapis.com/revoke?token=" + this.token, { method: "POST" }).catch(() => {});
+    }
+    this.token = null; this.user = null;
+    this.folderId = null; this.fileId = null;
+    clearTimeout(this.syncTimer);
+    localStorage.removeItem(USER_KEY);
+    this.setStatus("off", "");
+    this.renderAuth();
+  },
+
+  /* ---------- drive api ---------- */
+  async api(path, opts = {}) {
+    const res = await fetch("https://www.googleapis.com" + path, {
+      ...opts,
+      headers: { Authorization: "Bearer " + this.token, ...(opts.headers || {}) },
+    });
+    if (res.status === 401) { this.markExpired(); throw new Error("expired"); }
+    if (!res.ok) throw new Error("Drive error " + res.status);
+    const ct = res.headers.get("content-type") || "";
+    return ct.includes("json") ? res.json() : res.text();
+  },
+
+  markExpired() {
+    this.token = null;
+    this.setStatus("expired", "Sesi Google berakhir — login ulang");
+    this.renderAuth();
+  },
+
+  async findOrCreateFolder() {
+    if (this.folderId) return this.folderId;
+    const q = encodeURIComponent(`name = '${BACKUP_FOLDER}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
+    const data = await this.api(`/drive/v3/files?q=${q}&fields=files(id)`);
+    if (data.files?.length) { this.folderId = data.files[0].id; return this.folderId; }
+    const created = await this.api("/drive/v3/files", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: BACKUP_FOLDER, mimeType: "application/vnd.google-apps.folder" }),
+    });
+    this.folderId = created.id;
+    return this.folderId;
+  },
+
+  async findBackupFile() {
+    const folderId = await this.findOrCreateFolder();
+    const q = encodeURIComponent(`name = '${BACKUP_FILE}' and '${folderId}' in parents and trashed = false`);
+    const data = await this.api(`/drive/v3/files?q=${q}&fields=files(id,modifiedTime)`);
+    this.fileId = data.files?.[0]?.id || null;
+    return this.fileId;
+  },
+
+  async downloadBackup() {
+    const data = await this.api(`/drive/v3/files/${this.fileId}?alt=media`);
+    return typeof data === "string" ? JSON.parse(data) : data;
+  },
+
+  payload() {
+    return JSON.stringify({ version: 2, updatedAt: store.updatedAt || Date.now(), projects: store.projects, links: store.links });
+  },
+
+  async uploadBackup() {
+    const body = this.payload();
+    if (this.fileId) {
+      await this.api(`/upload/drive/v3/files/${this.fileId}?uploadType=media`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" }, body,
+      });
+    } else {
+      const metadata = { name: BACKUP_FILE, parents: [await this.findOrCreateFolder()] };
+      const boundary = "lh" + Date.now();
+      const multipart =
+        `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+        JSON.stringify(metadata) +
+        `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n` + body +
+        `\r\n--${boundary}--`;
+      const created = await this.api("/upload/drive/v3/files?uploadType=multipart", {
+        method: "POST",
+        headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+        body: multipart,
+      });
+      this.fileId = created.id;
+    }
+  },
+
+  /* ---------- alur sinkron ---------- */
+  async initialSync() {
+    if (!this.token) return;
+    this.setStatus("syncing", "Menyinkronkan…");
+    try {
+      await this.findBackupFile();
+      if (this.fileId) {
+        const drive = await this.downloadBackup().catch(() => null);
+        const dTime = (drive && drive.updatedAt) || 0;
+        const lTime = store.updatedAt || 0;
+        const driveHas = drive && Array.isArray(drive.links);
+        if (driveHas && dTime > lTime) {
+          store = sanitize({ version: 2, projects: drive.projects, links: drive.links, updatedAt: dTime });
+          if (activeProject !== "all" && activeProject !== "none" &&
+              !store.projects.some(p => p.id === activeProject)) activeProject = "all";
+          saveLocal();
+          render();
+          this.setStatus("ok", "Data dari Drive dipakai");
+        } else if (driveHas && lTime >= dTime && (store.links.length || store.projects.length)) {
+          await this.uploadBackup();
+          this.setStatus("ok", "Backup Drive diperbarui");
+        } else if (!driveHas && (store.links.length || store.projects.length)) {
+          await this.uploadBackup();
+          this.setStatus("ok", "Backup Drive dibuat");
+        } else {
+          this.setStatus("ok", "Siap sinkron");
+        }
+      } else if (store.links.length || store.projects.length) {
+        await this.uploadBackup();
+        this.setStatus("ok", "Backup Drive dibuat");
+      } else {
+        this.setStatus("ok", "Siap sinkron");
+      }
+    } catch (e) {
+      if (e.message !== "expired") this.setStatus("error", "Gagal sinkron — coba lagi");
+    }
+    this.renderAuth();
+  },
+
+  onLocalChange() {
+    if (!this.token || !this.user) return;
+    clearTimeout(this.syncTimer);
+    this.setStatus("pending", "Akan disinkronkan…");
+    this.renderAuth();
+    this.syncTimer = setTimeout(() => this.uploadNow(), 2500);
+  },
+
+  async uploadNow() {
+    if (!this.token || !this.user) return;
+    clearTimeout(this.syncTimer);
+    this.setStatus("syncing", "Menyinkronkan…");
+    this.renderAuth();
+    try {
+      if (!this.fileId) await this.findBackupFile();
+      await this.uploadBackup();
+      this.setStatus("ok", "Tersinkron ✓ " + new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }));
+    } catch (e) {
+      if (e.message !== "expired") this.setStatus("error", "Gagal sinkron — coba lagi");
+    }
+    this.renderAuth();
+  },
+
+  /* ---------- tampilan ---------- */
+  setStatus(s, msg) { this.status = s; this.statusMsg = msg || ""; },
+
+  renderAuth() {
+    const box = $("authArea");
+    const dot = { off: "⚪", pending: "🟡", syncing: "🔵", ok: "🟢", expired: "🟠", error: "🔴" }[this.status];
+    if (this.user && this.token) {
+      const isAdmin = (this.user.email || "").toLowerCase() === ADMIN_EMAIL;
+      box.innerHTML = `
+        <div class="user-chip" title="${esc(this.user.email || "")}">
+          ${this.user.picture ? `<img src="${esc(this.user.picture)}" class="avatar" alt="">` : "👤"}
+          <span class="uname">${esc(this.user.name || this.user.email || "Pengguna")}${isAdmin ? " 👑" : ""}</span>
+          <span class="sync-dot" title="${esc(this.statusMsg)}">${dot}</span>
+          <button id="btnLogout" class="btn sm ghost" title="Keluar">⏻</button>
+        </div>`;
+      $("btnLogout").onclick = () => this.logout();
+    } else if (this.user && !this.token) {
+      box.innerHTML = `<button id="btnLogin" class="btn">🔑 Login lagi <span class="sync-dot" title="${esc(this.statusMsg)}">${dot}</span></button>`;
+      $("btnLogin").onclick = () => this.login();
+    } else {
+      box.innerHTML = `<button id="btnLogin" class="btn">🔑 Masuk dengan Google</button>`;
+      $("btnLogin").onclick = () => this.login();
+    }
+  },
+};

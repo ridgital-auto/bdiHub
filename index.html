@@ -6,6 +6,7 @@
 <title>LinkHub — Kumpulan Link Web App</title>
 <meta name="description" content="Dashboard kumpulan link web app, dikelompokkan per proyek">
 <link rel="stylesheet" href="styles.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
@@ -18,12 +19,14 @@
     </div>
   </div>
   <div class="actions">
+    <div id="authArea"></div>
     <button id="btnAddProject" class="btn">＋ Proyek</button>
     <button id="btnAdd" class="btn primary">＋ Tambah Link</button>
     <div class="menu-wrap">
       <button id="btnMenu" class="btn ghost" title="Pengaturan">⚙️</button>
       <div id="menu" class="dropdown hidden">
         <button id="btnManageProjects">📁 Kelola proyek</button>
+        <button id="btnSyncNow">🔄 Sinkronkan sekarang</button>
         <button id="btnExport">⬇️ Export data (JSON)</button>
         <button id="btnImport">⬆️ Import data (JSON)</button>
         <button id="btnReset" class="danger">🗑️ Reset semua data</button>
@@ -114,6 +117,7 @@
 
 <input id="fileInput" type="file" accept="application/json" hidden>
 
+<script src="sync.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -32,6 +32,7 @@ function migrateV1(links) {
   });
   return {
     version: 2,
+    updatedAt: Date.now(),
     projects,
     links: links.map(l => ({
       id: l.id || uid(),
@@ -48,11 +49,16 @@ function migrateV1(links) {
 function sanitize(s) {
   return {
     version: 2,
+    updatedAt: s.updatedAt || 0,
     projects: Array.isArray(s.projects) ? s.projects : [],
     links: Array.isArray(s.links) ? s.links : []
   };
 }
-function save() { localStorage.setItem(KEY, JSON.stringify(store)); }
+function saveLocal() {
+  store.updatedAt = Date.now();
+  localStorage.setItem(KEY, JSON.stringify(store));
+}
+function save() { saveLocal(); DriveSync.onLocalChange(); }
 
 function normUrl(u) {
   u = u.trim();
@@ -348,13 +354,20 @@ $("fileInput").onchange = (e) => {
 
 $("btnReset").onclick = () => {
   if (confirm("Hapus SEMUA proyek dan link? Pastikan sudah export backup dulu!")) {
-    store = { version: 2, projects: [], links: [] };
+    store = { version: 2, updatedAt: Date.now(), projects: [], links: [] };
     activeProject = "all";
     save(); render();
   }
   $("menu").classList.add("hidden");
 };
 
+$("btnSyncNow").onclick = () => {
+  $("menu").classList.add("hidden");
+  if (DriveSync.token) DriveSync.uploadNow();
+  else { alert("Login Google dulu untuk sinkron ke Drive 🙂"); DriveSync.login(); }
+};
+
 /* ---------- init ---------- */
 $("search").oninput = render;
 render();
+DriveSync.init();

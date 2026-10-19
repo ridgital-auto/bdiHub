@@ -139,6 +139,21 @@ footer{text-align:center; padding:20px; font-size:12px; color:var(--muted)}
   background:rgba(255,255,255,.15); border-radius:999px; padding:1px 6px; margin-left:4px;
 }
 .chip.active .cnt{background:rgba(255,255,255,.3)}
+/* auth / sync */
+#authArea{display:flex; align-items:center}
+#authArea .btn{white-space:nowrap}
+.user-chip{
+  display:flex; align-items:center; gap:8px;
+  background:var(--card); border:1px solid var(--line);
+  border-radius:999px; padding:5px 8px 5px 5px; font-size:13px;
+}
+.user-chip .avatar{width:28px; height:28px; border-radius:50%}
+.user-chip .uname{max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sync-dot{font-size:12px}
+.user-chip .btn.sm{border:none; background:transparent; color:var(--muted); padding:4px 8px}
+@media (max-width:600px){
+  .user-chip .uname{display:none}
+}
 .row2{display:flex; gap:14px; align-items:flex-end}
 .row2 label{flex:1}
 .check{display:flex !important; align-items:center; gap:8px; color:var(--text) !important; white-space:nowrap; padding-bottom:10px}
