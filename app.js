@@ -140,8 +140,11 @@ function render() {
 function card(l) {
   const el = document.createElement("div");
   el.className = "card" + (l.pinned ? " pinned" : "");
+  const dom = domainOf(l.url);
+  const favUrl = "https://www.google.com/s2/favicons?domain=" + encodeURIComponent(dom) + "&sz=64";
   el.innerHTML = `
     <div class="card-head">
+      <span class="favwrap" title="${esc(dom)}">🌐<img class="fav" loading="lazy" src="${favUrl}" alt="" onerror="this.remove()"></span>
       <h3>${l.pinned ? '<span class="pin">📌</span>' : ""}${esc(l.name)}</h3>
       <div class="card-tools">
         <button title="Opsi">⋮</button>
