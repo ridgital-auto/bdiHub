@@ -88,9 +88,10 @@
         color: #ffeef6;
         border: 1px solid rgba(255, 255, 255, 0.25);
         backdrop-filter: blur(6px);
-        font-weight: 800; font-size: 13px;
-        padding: 7px 12px; border-radius: 999px;
+        font-weight: 800; font-size: 14.5px;
+        padding: 9px 14px; border-radius: 999px;
       }
+      .pill #statusIcon { font-size: 18px; line-height: 1; }
       .pill .dot { width: 9px; height: 9px; border-radius: 50%; background: #a3a3a3; flex: none; }
       .pill.ok .dot { background: #4ade80; }
       .pill.search .dot { background: var(--gold); animation: blink 1s infinite alternate; }
@@ -125,7 +126,7 @@
       #startOverlay {
         position: absolute; inset: 0; z-index: 8;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        text-align: center; padding: 22px; gap: 8px;
+        text-align: center; padding: 22px; gap: 8px; overflow-y: auto;
         background:
           radial-gradient(240px 160px at 18% 12%, rgba(244, 114, 182, 0.35), transparent 70%),
           radial-gradient(280px 200px at 85% 88%, rgba(245, 185, 33, 0.28), transparent 70%),
@@ -133,7 +134,7 @@
         color: #ffeef6;
       }
       #startOverlay.hide { display: none; }
-      #startOverlay .mirrorArt { width: min(168px, 42vw); height: auto; }
+      #startOverlay .mirrorArt { width: min(124px, 32vw); height: auto; }
       #startOverlay h1 {
         font-family: "Baloo 2", sans-serif; font-weight: 800;
         font-size: clamp(24px, 6vw, 36px); margin: 6px 0 0; line-height: 1.12;
@@ -142,31 +143,78 @@
       .start-btns { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; width: min(320px, 100%); }
       .btn {
         border: none; border-radius: 999px;
-        font-family: "Baloo 2", sans-serif; font-weight: 700; font-size: 17px;
-        padding: 13px 20px;
+        font-family: "Baloo 2", sans-serif; font-weight: 700; font-size: 18px;
+        padding: 13px 20px; min-height: 58px;
         display: inline-flex; align-items: center; justify-content: center; gap: 9px;
       }
+      .btn-big { font-size: 21px; padding: 16px 22px; min-height: 68px; }
       .btn svg { width: 20px; height: 20px; flex: none; }
       .btn-pink { background: var(--pink); color: #fff; box-shadow: 0 8px 20px rgba(236, 72, 153, 0.45); }
       .btn-pink:active { background: var(--pink-deep); }
       .btn-ghost { background: rgba(255, 255, 255, 0.12); color: #ffeef6; border: 1.5px solid rgba(255, 255, 255, 0.4); }
       #camError { display: none; margin-top: 10px; max-width: 400px; background: rgba(127, 29, 29, 0.55); border: 1px solid rgba(254, 202, 202, 0.5); color: #ffe4e6; border-radius: 14px; padding: 10px 14px; font-size: 14px; font-weight: 700; line-height: 1.45; }
       #camError.show { display: block; }
+      /* ---------- Langkah 1: pilih mode online / offline ---------- */
+      #modeStep, #startStep { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+      #modeStep.hide, #startStep.hide { display: none; }
+      .net-line {
+        display: inline-flex; align-items: center; gap: 9px;
+        background: rgba(255, 255, 255, 0.12); border: 1.5px solid rgba(255, 255, 255, 0.35);
+        border-radius: 999px; padding: 9px 18px; font-weight: 800; font-size: 16px; margin-top: 4px;
+      }
+      .net-line .ndot { width: 14px; height: 14px; border-radius: 50%; background: #a3a3a3; flex: none; }
+      .net-line.on .ndot { background: #4ade80; }
+      .net-line.off .ndot { background: #f87171; }
+      .mode-grid { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; width: min(350px, 100%); }
+      .mode-card {
+        display: flex; align-items: center; gap: 15px; text-align: left;
+        padding: 15px 18px; border-radius: 22px; min-height: 88px;
+        border: 3px solid rgba(255, 255, 255, 0.35);
+        background: rgba(255, 255, 255, 0.10); color: #ffeef6;
+      }
+      .mode-card:active { background: rgba(255, 255, 255, 0.22); }
+      .mode-card .m-ico { font-size: 46px; line-height: 1; flex: none; }
+      .mode-card .m-title { font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 22px; line-height: 1.1; }
+      .mode-card .m-sub { font-size: 13.5px; font-weight: 700; color: #ffd7e8; line-height: 1.35; margin-top: 2px; }
+      #modeWarn {
+        display: none; margin-top: 12px; max-width: 400px;
+        background: rgba(127, 29, 29, 0.55); border: 1px solid rgba(254, 202, 202, 0.5);
+        color: #ffe4e6; border-radius: 14px; padding: 11px 15px;
+        font-size: 15px; font-weight: 700; line-height: 1.45;
+      }
+      #modeWarn.show { display: block; }
+      .mode-chip-row { display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+      .mode-chip {
+        display: inline-flex; align-items: center; gap: 7px;
+        background: rgba(255, 255, 255, 0.14); border: 1.5px solid rgba(255, 255, 255, 0.4);
+        border-radius: 999px; padding: 8px 15px; font-weight: 800; font-size: 15px;
+      }
+      #changeModeBtn {
+        background: none; border: none; color: #ffd7e8;
+        font-weight: 800; font-size: 14.5px; text-decoration: underline; padding: 8px 4px;
+      }
+      .offline-note {
+        margin: 10px 0 0; max-width: 400px; font-size: 14.5px; font-weight: 700; line-height: 1.45;
+        background: rgba(245, 185, 33, 0.18); border: 1.5px solid rgba(245, 185, 33, 0.55);
+        color: #fde68a; border-radius: 14px; padding: 10px 14px;
+      }
       /* ---------- Controls ---------- */
       .controls { display: flex; flex-direction: column; gap: 10px; }
       .cat-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
       .cat-row::-webkit-scrollbar { display: none; }
       .cat-pill {
-        flex: none; border: 1.5px solid var(--line); background: var(--panel);
-        color: var(--ink-soft); font-weight: 800; font-size: 14px;
-        padding: 7px 15px; border-radius: 999px;
+        flex: none; border: 2px solid var(--line); background: var(--panel);
+        color: var(--ink-soft); font-weight: 800; font-size: 15px;
+        padding: 9px 16px; border-radius: 999px; min-height: 54px;
+        display: inline-flex; align-items: center; gap: 8px;
       }
+      .cat-pill .cat-ico { font-size: 25px; line-height: 1; }
       .cat-pill.active { background: var(--ink); border-color: var(--ink); color: var(--bg); }
       .active-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 22px; }
       #activeInfo { font-size: 13.5px; font-weight: 800; color: var(--ink-soft); }
       #clearFx {
         border: none; background: none; color: var(--pink-deep);
-        font-weight: 800; font-size: 13.5px; padding: 2px 4px; display: none;
+        font-weight: 800; font-size: 15px; padding: 10px 6px; min-height: 44px; display: none;
       }
       #clearFx.show { display: inline; }
       .chip-rail {
@@ -175,20 +223,23 @@
       }
       .chip {
         scroll-snap-align: start; flex: none;
-        width: 86px; border: 2px solid var(--line); background: var(--chip-bg);
-        border-radius: 18px; padding: 9px 4px 8px;
-        display: flex; flex-direction: column; align-items: center; gap: 5px;
+        width: 106px; border: 2.5px solid var(--line); background: var(--chip-bg);
+        border-radius: 20px; padding: 12px 4px 10px;
+        display: flex; flex-direction: column; align-items: center; gap: 6px;
         color: var(--ink); position: relative;
         transition: border-color 0.15s, background 0.15s, transform 0.1s;
       }
       .chip:active { transform: scale(0.95); }
-      .chip svg { width: 30px; height: 30px; }
-      .chip span { font-size: 11.5px; font-weight: 800; line-height: 1.15; text-align: center; }
+      .chip svg { width: 48px; height: 48px; }
+      .chip span { font-size: 13px; font-weight: 800; line-height: 1.15; text-align: center; }
       .chip.on { border-color: var(--pink); background: var(--pink-soft); }
-      .chip.on::after {
-        content: ""; position: absolute; top: 6px; right: 6px;
-        width: 10px; height: 10px; border-radius: 50%;
-        background: var(--pink); border: 2px solid #fff;
+      .chip .check {
+        position: absolute; top: -9px; right: -9px; z-index: 3;
+        width: 30px; height: 30px; border-radius: 50%;
+        background: #22c55e; color: #fff;
+        font-size: 19px; font-weight: 900; font-style: normal; line-height: 1;
+        display: grid; place-items: center;
+        border: 2.5px solid #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
       }
       .chip .bdg {
         position: absolute; top: -7px; left: -5px; z-index: 2;
@@ -204,16 +255,18 @@
         padding-top: 2px;
       }
       .side-btn {
-        display: flex; flex-direction: column; align-items: center; gap: 4px;
+        display: flex; flex-direction: column; align-items: center; gap: 3px;
         background: none; border: none; color: var(--ink); font-weight: 800; font-size: 12.5px;
-        width: 76px;
+        width: 92px; min-height: 96px; justify-content: flex-start;
       }
       .side-btn .ring {
-        width: 56px; height: 56px; border-radius: 50%;
-        border: 2.5px solid var(--line); background: var(--panel);
+        width: 72px; height: 72px; border-radius: 50%;
+        border: 3px solid var(--line); background: var(--panel);
         display: grid; place-items: center; position: relative;
       }
-      .side-btn .ring svg { width: 25px; height: 25px; }
+      .side-btn .ring svg { width: 32px; height: 32px; }
+      .side-btn .gif-label { font-family: "Baloo 2", sans-serif; font-size: 19px; font-weight: 800; line-height: 1.1; }
+      .side-btn .gif-sub { font-size: 12px; font-weight: 800; color: var(--ink-soft); }
       .side-btn:disabled { opacity: 0.45; cursor: default; }
       #gifBtn .ring { border-color: var(--gold); }
       #gifBtn.recording .ring { border-color: #e11d48; }
@@ -226,19 +279,19 @@
       }
       #gifBtn.recording #gifProg { display: block; }
       #photoBtn {
-        width: 78px; height: 78px; border-radius: 50%;
+        width: 96px; height: 96px; border-radius: 50%;
         border: 4px solid var(--pink);
         background: var(--panel);
         display: grid; place-items: center; padding: 0;
         box-shadow: var(--shadow);
       }
       #photoBtn .core {
-        width: 58px; height: 58px; border-radius: 50%;
+        width: 74px; height: 74px; border-radius: 50%;
         background: var(--pink); display: grid; place-items: center; color: #fff;
         transition: transform 0.1s;
       }
       #photoBtn:active .core { transform: scale(0.88); }
-      #photoBtn svg { width: 29px; height: 29px; }
+      #photoBtn svg { width: 38px; height: 38px; }
       #photoBtn:disabled { opacity: 0.45; }
       .hint { text-align: center; font-size: 13px; color: var(--ink-soft); font-weight: 700; margin: 0; }
       /* ---------- Modal ---------- */
@@ -269,7 +322,7 @@
         position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom));
         transform: translate(-50%, 80px); z-index: 60;
         background: var(--ink); color: var(--bg);
-        font-weight: 800; font-size: 14.5px; padding: 11px 20px; border-radius: 999px;
+        font-weight: 800; font-size: 16.5px; padding: 14px 22px; border-radius: 999px; min-height: 52px;
         opacity: 0; transition: transform 0.3s, opacity 0.3s; pointer-events: none;
         max-width: calc(100vw - 32px); text-align: center;
       }
@@ -290,7 +343,7 @@
       <section class="stage-wrap" aria-label="Tampilan kamera">
         <canvas id="stage" width="720" height="900"></canvas>
         <div class="stage-top">
-          <div class="pill" id="statusPill"><span class="dot"></span><span id="statusText">Kamera belum menyala</span></div>
+          <div class="pill" id="statusPill"><span class="dot"></span><span id="statusIcon" aria-hidden="true">📷</span><span id="statusText">Kamera belum menyala</span></div>
           <button class="icon-btn" id="flipBtn" type="button" aria-label="Balik kamera depan atau belakang" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
           </button>
@@ -298,6 +351,28 @@
         <div id="recBadge"><span class="rdot"></span><span id="recText">Merekam GIF…</span></div>
         <div id="flash"></div>
         <div id="startOverlay">
+          <div id="modeStep">
+            <h1>Mau Main Pakai Apa? 🤔</h1>
+            <div class="net-line" id="netLine"><span class="ndot"></span><span id="netText">Mengecek internet…</span></div>
+            <div class="mode-grid">
+              <button class="mode-card" id="modeOnlineBtn" type="button">
+                <span class="m-ico" aria-hidden="true">🌐</span>
+                <span>
+                  <span class="m-title">Online</span>
+                  <span class="m-sub" style="display:block;">Ada internet — semua efek wajah bisa dipakai 🎉</span>
+                </span>
+              </button>
+              <button class="mode-card" id="modeOfflineBtn" type="button">
+                <span class="m-ico" aria-hidden="true">📴</span>
+                <span>
+                  <span class="m-title">Offline</span>
+                  <span class="m-sub" style="display:block;">Tanpa internet — bisa foto saja, efek wajah tidak muncul</span>
+                </span>
+              </button>
+            </div>
+            <div id="modeWarn" role="alert"></div>
+          </div>
+          <div id="startStep" class="hide">
           <svg class="mirrorArt" viewBox="0 0 200 170" fill="none" aria-hidden="true">
             <ellipse cx="100" cy="78" rx="62" ry="68" fill="#fdf2f8" stroke="#f9a8d4" stroke-width="5"/>
             <circle cx="100" cy="70" r="34" fill="#ffd9c2"/>
@@ -310,15 +385,21 @@
             <path d="M28 30l2.5 6 6 2.5-6 2.5L28 47l-2.5-6-6-2.5 6-2.5z" fill="#f472b6"/>
             <path d="M170 22l2 5 5 2-5 2-2 5-2-5-5-2 5-2z" fill="#f5b921"/>
           </svg>
-          <h1>Siap Bergaya?</h1>
-          <p>Seperti bercermin, tapi bisa pakai mahkota, telinga kucing, kacamata hati, dan banyak efek lucu lainnya. Pilih efeknya, lalu foto atau buat GIF!</p>
+          <h1>Siap Bergaya? 😄</h1>
+          <p>Seperti bercermin, tapi bisa pakai mahkota, telinga kucing, dan banyak efek lucu. Tekan tombol kamera ya! 👇</p>
           <div class="start-btns">
-            <button class="btn btn-pink" id="startCamBtn" type="button">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            <button class="btn btn-pink btn-big" id="startCamBtn" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:26px;height:26px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
               Nyalakan Kamera
             </button>
           </div>
+          <p class="offline-note" id="offlineNote" hidden>📴 Mode offline: kamera bisa buat foto, tapi efek wajahnya tidak muncul ya.</p>
+          <div class="mode-chip-row">
+            <span class="mode-chip" id="modeChip">🌐 Online</span>
+            <button id="changeModeBtn" type="button">🔀 Ganti mode</button>
+          </div>
           <div id="camError" role="alert"></div>
+          </div>
         </div>
       </section>
 
@@ -326,7 +407,7 @@
         <div class="cat-row" id="catRow" role="tablist" aria-label="Kategori efek"></div>
         <div class="active-bar">
           <span id="activeInfo">Belum ada efek yang dipilih</span>
-          <button id="clearFx" type="button">Hapus semua efek</button>
+          <button id="clearFx" type="button">🗑️ Hapus semua</button>
         </div>
         <div class="chip-rail" id="chipRail"></div>
         <div class="shutter-row">
@@ -335,7 +416,8 @@
               <span id="gifProg"></span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M7 15.5A2.5 2.5 0 1 1 7 10.5h3M13 9.5v6M17 9.5v6M17 12.5h2.5"/></svg>
             </span>
-            GIF 3 Detik
+            <span class="gif-label">🎞️ GIF</span>
+            <span class="gif-sub">3 detik</span>
           </button>
           <button id="photoBtn" type="button" aria-label="Ambil foto" disabled>
             <span class="core">
@@ -343,25 +425,25 @@
             </span>
           </button>
         </div>
-        <p class="hint">Foto &amp; GIF dibuat dari tampilan layar ini — efek yang aktif ikut terekam.</p>
+        <p class="hint">📸 Foto &amp; GIF menyimpan efek yang lagi kamu pakai.</p>
       </section>
     </main>
 
     <div id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
       <div class="modal-card">
         <h2 id="modalTitle">Hasil Foto</h2>
-        <div id="encoding">Sedang membuat GIF…<div class="bar"><i></i></div></div>
+        <div id="encoding">⏳ Sedang membuat GIF…<div class="bar"><i></i></div></div>
         <img id="shotImg" alt="Hasil jepretan kamera dengan efek" />
         <div class="modal-btns">
           <a class="btn btn-pink" id="saveBtn" href="#" download="foto-efek.png" style="text-decoration:none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
-            Simpan ke HP
+            💾 Simpan ke HP
           </a>
           <button class="btn btn-mint" id="shareBtn" type="button">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
-            Bagikan
+            📤 Bagikan
           </button>
-          <button class="btn btn-line" id="closeModalBtn" type="button">Tutup</button>
+          <button class="btn btn-line" id="closeModalBtn" type="button">✖️ Tutup</button>
         </div>
       </div>
     </div>
@@ -2146,6 +2228,7 @@
          STATUS APLIKASI
          ============================================================ */
       var mode = 'off';           // 'off' | 'camera'
+      var appMode = 'online';     // 'online' | 'offline' — dikonfirmasi di langkah awal sebelum kamera menyala
       var facing = 'user';
       var stream = null;
       var faceMesh = null, fmBusy = false, fmFailed = false;
@@ -2161,8 +2244,10 @@
 
       var statusPill = document.getElementById('statusPill');
       var statusText = document.getElementById('statusText');
-      function setStatus(txt, cls) {
+      var statusIcon = document.getElementById('statusIcon');
+      function setStatus(txt, cls, ico) {
         statusText.textContent = txt;
+        if (ico) statusIcon.textContent = ico;
         statusPill.className = 'pill' + (cls ? ' ' + cls : '');
       }
 
@@ -2214,6 +2299,8 @@
       }
 
       function initFaceMesh() {
+        // Mode offline: pelacak wajah tidak dimuat sama sekali (butuh internet).
+        if (appMode === 'offline') { fmFailed = true; return Promise.resolve(); }
         if (faceMesh || fmFailed) return Promise.resolve();
         return loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js')
           .then(function () {
@@ -2289,6 +2376,7 @@
       }
 
       function startFallbackDetection() {
+        if (appMode === 'offline') return;
         if (fallbackActive || fdFailed) return;
         fallbackActive = true;
         loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/face_detection/face_detection.js')
@@ -2319,7 +2407,7 @@
       function startCamera() {
         hideCamError();
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          showCamError('Browser ini tidak mendukung kamera. Coba buka halaman ini di Chrome HP ya.');
+          showCamError('⚠️ Browser ini tidak mendukung kamera. Coba buka halaman ini di Chrome HP ya.');
           return;
         }
         navigator.mediaDevices.getUserMedia({
@@ -2335,12 +2423,13 @@
           document.getElementById('startOverlay').classList.add('hide');
           document.getElementById('flipBtn').disabled = false;
           setButtons(true);
-          setStatus('Mencari wajah…', 'search');
+          if (appMode === 'offline') setStatus('Foto saja — tanpa efek', '', '📴');
+          else setStatus('Lagi mencari wajah…', 'search', '🔍');
           initFaceMesh();
           startLoop();
         }).catch(function (err) {
           if (window.console) console.warn('Kamera gagal:', err);
-          showCamError('Kamera belum bisa dibuka. Pastikan izin kamera diberikan untuk halaman ini, lalu coba lagi ya.');
+          showCamError('⚠️ Kamera belum bisa dibuka. Pastikan izin kamera diberikan untuk halaman ini, lalu coba lagi ya.');
         });
       }
 
@@ -2471,9 +2560,10 @@
             fh: Math.max(30, dist(P[10], P[152])),
             ang: Math.atan2(eR.y - eL.y, eR.x - eL.x)
           };
-          if (mode === 'camera') setStatus('Wajah ketemu!', 'ok');
+          if (mode === 'camera') setStatus('Wajah ketemu!', 'ok', '😊');
         } else if (mode === 'camera') {
-          setStatus('Mencari wajah… posisikan wajah di tengah', 'search');
+          if (appMode === 'offline') setStatus('Foto saja — tanpa efek', '', '📴');
+          else setStatus('Lagi mencari wajah…', 'search', '🔍');
         }
 
         // distorsi wajah (warp piksel) jalan sebelum gambar tempel,
@@ -2806,14 +2896,14 @@
          UI EFEK: kategori + chip
          ============================================================ */
       var CATS = [
-        { id: 'semua', name: 'Semua' },
-        { id: 'distorsi', name: 'Distorsi' },
-        { id: 'hewan', name: 'Hewan' },
-        { id: 'cantik', name: 'Cantik' },
-        { id: 'lucu', name: 'Lucu' },
-        { id: 'kepala', name: 'Di Kepala' },
-        { id: 'ajaib', name: 'Ajaib' },
-        { id: 'bingkai', name: 'Bingkai & Filter' }
+        { id: 'semua', name: 'Semua', ico: '⭐' },
+        { id: 'distorsi', name: 'Distorsi', ico: '🤪' },
+        { id: 'hewan', name: 'Hewan', ico: '🐰' },
+        { id: 'cantik', name: 'Cantik', ico: '💄' },
+        { id: 'lucu', name: 'Lucu', ico: '😂' },
+        { id: 'kepala', name: 'Di Kepala', ico: '👑' },
+        { id: 'ajaib', name: 'Ajaib', ico: '🪄' },
+        { id: 'bingkai', name: 'Bingkai & Filter', ico: '🖼️' }
       ];
       var curCat = 'semua';
       var catRow = document.getElementById('catRow');
@@ -2825,7 +2915,7 @@
         var b = document.createElement('button');
         b.type = 'button';
         b.className = 'cat-pill' + (cat.id === 'semua' ? ' active' : '');
-        b.textContent = cat.name;
+        b.innerHTML = '<span class="cat-ico" aria-hidden="true">' + cat.ico + '</span>' + cat.name;
         b.setAttribute('role', 'tab');
         b.addEventListener('click', function () {
           curCat = cat.id;
@@ -2843,7 +2933,7 @@
           b.type = 'button';
           b.className = 'chip' + (active[e.id] ? ' on' : '');
           b.setAttribute('aria-pressed', active[e.id] ? 'true' : 'false');
-          b.innerHTML = IC[e.icon] + '<span>' + e.name + '</span>' + (e.baru ? '<i class="bdg">BARU</i>' : '');
+          b.innerHTML = IC[e.icon] + '<span>' + e.name + '</span>' + (e.baru ? '<i class="bdg">BARU</i>' : '') + (active[e.id] ? '<i class="check" aria-hidden="true">✓</i>' : '');
           b.addEventListener('click', function () { toggleFx(e); });
           chipRail.appendChild(b);
         });
@@ -2854,7 +2944,7 @@
         reset.addEventListener('click', function () {
           active = {};
           renderChips(); updateActiveInfo();
-          toast('Semua efek dimatikan.');
+          toast('🧹 Semua efek dimatikan.');
         });
         chipRail.appendChild(reset);
       }
@@ -2875,10 +2965,10 @@
         var ids = Object.keys(active);
         var names = ids.map(function (id) { return FX[id].name; });
         if (!ids.length) {
-          activeInfo.textContent = 'Belum ada efek yang dipilih';
+          activeInfo.textContent = '👇 Pilih efek lucunya di bawah ya';
           clearFxBtn.classList.remove('show');
         } else {
-          activeInfo.textContent = ids.length + ' efek aktif: ' + names.join(', ');
+          activeInfo.textContent = '⭐ ' + ids.length + ' efek dipilih: ' + names.join(', ');
           clearFxBtn.classList.add('show');
         }
       }
@@ -2891,6 +2981,58 @@
         photoBtn.disabled = !on;
         gifBtn.disabled = !on;
       }
+
+      /* ============================================================
+         LANGKAH AWAL: KONFIRMASI MODE ONLINE / OFFLINE
+         Efek wajah (pelacak MediaPipe) dimuat dari internet, jadi anak
+         memilih dulu: Online = semua efek bisa dipakai; Offline =
+         kamera foto saja tanpa efek wajah.
+         ============================================================ */
+      var modeStep = document.getElementById('modeStep');
+      var startStep = document.getElementById('startStep');
+      var netLine = document.getElementById('netLine');
+      var netText = document.getElementById('netText');
+      var modeWarn = document.getElementById('modeWarn');
+      var modeChip = document.getElementById('modeChip');
+      var offlineNote = document.getElementById('offlineNote');
+
+      function refreshNetLine() {
+        var on = navigator.onLine;
+        netLine.className = 'net-line ' + (on ? 'on' : 'off');
+        netText.textContent = on ? 'Ada internet' : 'Tidak ada internet';
+      }
+      function chooseMode(m) {
+        appMode = m;
+        modeWarn.classList.remove('show');
+        modeStep.classList.add('hide');
+        startStep.classList.remove('hide');
+        modeChip.textContent = m === 'online' ? '🌐 Online' : '📴 Offline';
+        offlineNote.hidden = m !== 'offline';
+      }
+      document.getElementById('modeOnlineBtn').addEventListener('click', function () {
+        if (!navigator.onLine) {
+          modeWarn.textContent = '⚠️ Belum ada internet. Nyalakan WiFi atau data dulu ya 📶 — atau pilih Offline.';
+          modeWarn.classList.add('show');
+          return;
+        }
+        chooseMode('online');
+      });
+      document.getElementById('modeOfflineBtn').addEventListener('click', function () { chooseMode('offline'); });
+      document.getElementById('changeModeBtn').addEventListener('click', function () {
+        hideCamError();
+        startStep.classList.add('hide');
+        modeStep.classList.remove('hide');
+        refreshNetLine();
+      });
+      window.addEventListener('online', function () {
+        refreshNetLine();
+        if (mode === 'camera' && appMode === 'online') toast('🌐 Internet tersambung lagi.');
+      });
+      window.addEventListener('offline', function () {
+        refreshNetLine();
+        if (mode === 'camera' && appMode === 'online') toast('📴 Internet putus — efek wajah bisa berhenti sebentar.');
+      });
+      refreshNetLine();
 
       document.getElementById('startCamBtn').addEventListener('click', startCamera);
       document.getElementById('flipBtn').addEventListener('click', flipCamera);
