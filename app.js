@@ -169,6 +169,32 @@ function attachFavicon(wrap, url) {
   wrap.appendChild(img);
 }
 
+/* download file target link untuk dibuka offline */
+async function downloadLink(l) {
+  let fileName = "";
+  try {
+    const p = new URL(l.url).pathname;
+    const f = p.substring(p.lastIndexOf("/") + 1);
+    if (f && /\.(html?|zip|pdf|json|txt)$/i.test(f)) fileName = decodeURIComponent(f);
+  } catch { /* abaikan */ }
+  if (!fileName) fileName = (l.name || "file").replace(/[\\/:*?"<>|]/g, "").trim() + ".html";
+  try {
+    const r = await fetch(l.url);
+    if (!r.ok) throw 0;
+    const blob = await r.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+  } catch {
+    if (confirm("Download langsung gagal di situs ini. Buka link-nya saja di tab baru?")) {
+      window.open(l.url, "_blank", "noopener");
+    }
+  }
+}
+
 function card(l) {
   const el = document.createElement("div");
   el.className = "card" + (l.pinned ? " pinned" : "");
@@ -181,6 +207,7 @@ function card(l) {
         <button title="Opsi">⋮</button>
         <div class="tools-menu hidden">
           <button data-act="visit">↗ Buka</button>
+          <button data-act="dl">⬇️ Simpan (offline)</button>
           <button data-act="pin">${l.pinned ? "📍 Lepas pin" : "📌 Sematkan"}</button>
           <button data-act="edit">✏️ Edit</button>
           <button data-act="copy">📋 Salin URL</button>
@@ -193,6 +220,7 @@ function card(l) {
     <div class="card-foot">
       <div>
         <a class="visit" href="${esc(l.url)}" target="_blank" rel="noopener">Kunjungi ↗</a>
+        <button class="visit dl" title="Download file ini agar bisa dibuka tanpa buka bdiHub lagi">⬇ Simpan</button>
         ${l.hits ? `<div class="hits">dibuka ${l.hits}×</div>` : ""}
       </div>
     </div>`;
@@ -205,12 +233,14 @@ function card(l) {
     toggle.classList.toggle("hidden");
   };
   el.querySelector(".visit").onclick = () => { l.hits = (l.hits || 0) + 1; save(); setTimeout(render, 300); };
+  el.querySelector(".visit.dl").onclick = (e) => { e.stopPropagation(); downloadLink(l); };
   toggle.onclick = (e) => {
     e.stopPropagation();
     const act = e.target.closest("button")?.dataset.act;
     if (!act) return;
     toggle.classList.add("hidden");
     if (act === "visit") el.querySelector(".visit").click();
+    if (act === "dl") downloadLink(l);
     if (act === "pin") { l.pinned = !l.pinned; save(); render(); }
     if (act === "edit") openLinkModal(l);
     if (act === "copy") { navigator.clipboard.writeText(l.url).then(() => alert("URL tersalin ✅")); }

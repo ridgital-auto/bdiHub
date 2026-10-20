@@ -76,6 +76,7 @@ main{flex:1; padding:22px 26px; max-width:1100px; width:100%; margin:0 auto}
   background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff;
   font-size:14px; font-weight:600;
 }
+.visit.dl{background:transparent; border:1px solid var(--line); color:var(--text); margin-left:8px; cursor:pointer; font-family:inherit}
 .hits{font-size:11px; color:var(--muted); margin-top:6px}
 .card-tools{position:relative}
 .card-tools>button{

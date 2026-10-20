@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Wajah Ceria — 5 Game Kamera Seru</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fff6ec;
+        --bg-dots: #ffe3c2;
+        --card: #ffffff;
+        --ink: #4a3226;
+        --ink-soft: #8a6a55;
+        --pink: #ff8fab;
+        --pink-deep: #f2607e;
+        --orange: #ffa94d;
+        --yellow: #ffd43b;
+        --green: #69db7c;
+        --green-deep: #37b24d;
+        --sky: #4dabf7;
+        --sky-soft: #d3ebff;
+        --night: #2b3a67;
+        --line: #f3ddc8;
+        --shadow: 0 6px 0 rgba(190, 120, 60, .18), 0 14px 28px rgba(190, 120, 60, .12);
+        --btn-shadow: 0 5px 0 rgba(0,0,0,.14);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #241d2e;
+          --bg-dots: #322740;
+          --card: #372c47;
+          --ink: #fdf3e3;
+          --ink-soft: #cbb8dd;
+          --line: #4d3f63;
+          --shadow: 0 6px 0 rgba(0,0,0,.3), 0 14px 28px rgba(0,0,0,.35);
+          --sky-soft: #2c3d5e;
+        }
+      }
+      * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Nunito", system-ui, sans-serif;
+        background-color: var(--bg);
+        background-image: radial-gradient(var(--bg-dots) 3px, transparent 3.5px);
+        background-size: 34px 34px;
+        color: var(--ink);
+        min-height: 100dvh;
+      }
+      .wrap { max-width: 520px; margin: 0 auto; padding: 18px 16px 40px; }
+      h1, h2, h3 { font-family: "Baloo 2", "Nunito", sans-serif; margin: 0; line-height: 1.08; }
+      button { font-family: "Baloo 2", "Nunito", sans-serif; cursor: pointer; border: none; }
+      .screen { display: none; }
+      .screen.active { display: block; animation: pop .25s ease; }
+      @keyframes pop { from { transform: scale(.97); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) { .screen.active { animation: none; } .bob { animation: none !important; } }
+
+      /* ---------- MENU ---------- */
+      .hero { text-align: center; padding: 14px 4px 6px; }
+      .hero .faces { font-size: 44px; letter-spacing: 6px; }
+      .hero h1 { font-size: 52px; font-weight: 800; color: var(--pink-deep); letter-spacing: .5px; }
+      .hero h1 .alt { color: var(--orange); }
+      .hero p { margin: 8px auto 0; font-size: 18px; font-weight: 700; color: var(--ink-soft); max-width: 340px; }
+      .cam-note {
+        margin: 16px auto 4px; max-width: 420px; background: var(--card); border: 3px dashed var(--orange);
+        border-radius: 20px; padding: 12px 16px; font-size: 16px; font-weight: 700; text-align: center;
+      }
+      .cam-note b { color: var(--pink-deep); }
+      .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
+      .game-card {
+        background: var(--card); border-radius: 26px; padding: 18px 12px 14px; text-align: center;
+        box-shadow: var(--shadow); border: 3px solid var(--line); color: var(--ink);
+        transition: transform .12s ease; width: 100%;
+      }
+      .game-card:active { transform: scale(.96); }
+      .game-card .emoji { font-size: 62px; display: block; line-height: 1.1; }
+      .game-card h3 { font-size: 21px; margin-top: 6px; }
+      .game-card .how { font-size: 14.5px; font-weight: 700; color: var(--ink-soft); margin-top: 2px; }
+      .game-card .best { display: inline-block; margin-top: 8px; background: var(--sky-soft); color: var(--ink);
+        font-family: "Baloo 2", sans-serif; font-weight: 700; font-size: 14px; padding: 3px 12px; border-radius: 999px; }
+      .game-card.wide { grid-column: 1 / -1; }
+      .big-btn {
+        display: block; width: 100%; margin-top: 18px; padding: 16px; font-size: 22px; font-weight: 800;
+        border-radius: 999px; color: #fff; background: var(--green-deep); box-shadow: var(--btn-shadow);
+      }
+      .big-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.14); }
+      .big-btn.pink { background: var(--pink-deep); }
+      .big-btn.sky { background: var(--sky); }
+      .ghost-btn {
+        display: block; width: 100%; margin-top: 12px; padding: 13px; font-size: 18px; font-weight: 800;
+        border-radius: 999px; color: var(--ink); background: var(--card); border: 3px solid var(--line);
+      }
+
+      /* ---------- INTRO ---------- */
+      .intro-card { background: var(--card); border-radius: 30px; box-shadow: var(--shadow); border: 3px solid var(--line); padding: 26px 20px; text-align: center; margin-top: 14px; }
+      .intro-card .mascot { font-size: 110px; line-height: 1.1; display: block; }
+      .bob { animation: bob 1.6s ease-in-out infinite; display: inline-block; }
+      @keyframes bob { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+      .intro-card h2 { font-size: 34px; margin-top: 8px; }
+      .intro-card .move { font-size: 21px; font-weight: 800; color: var(--pink-deep); margin-top: 10px; }
+      .intro-card .desc { font-size: 17px; font-weight: 700; color: var(--ink-soft); margin-top: 8px; line-height: 1.45; }
+      .warn-chip { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; background: #fff3f3; border: 2.5px solid #ffc9c9;
+        color: #c92a2a; font-weight: 800; font-size: 16px; padding: 8px 16px; border-radius: 999px; }
+      @media (prefers-color-scheme: dark) { .warn-chip { background: #472b33; border-color: #7a4453; color: #ffa8a8; } }
+      .back-link { background: none; color: var(--ink-soft); font-size: 17px; font-weight: 800; padding: 8px 4px; }
+      .top-row { display: flex; align-items: center; justify-content: space-between; }
+      .icon-btn { background: var(--card); border: 3px solid var(--line); border-radius: 999px; width: 48px; height: 48px; font-size: 22px; line-height: 1; box-shadow: var(--shadow); }
+
+      /* ---------- GAME ---------- */
+      .hud { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 6px 0 10px; }
+      .hud .pill { background: var(--card); border: 3px solid var(--line); border-radius: 999px; padding: 6px 14px;
+        font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 19px; box-shadow: var(--shadow); white-space: nowrap; }
+      .hud .hearts { font-size: 21px; letter-spacing: 2px; }
+      .stage { position: relative; border-radius: 28px; overflow: hidden; box-shadow: var(--shadow); border: 4px solid var(--card); }
+      canvas#cv { display: block; width: 100%; height: auto; background: #bfe8ff; touch-action: none; }
+      .cam-preview {
+        position: absolute; right: 12px; bottom: 12px; width: 92px; height: 92px; border-radius: 50%;
+        overflow: hidden; border: 5px solid #adb5bd; background: #222; z-index: 5; transition: border-color .15s;
+      }
+      .cam-preview video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+      .cam-preview.on { border-color: var(--green-deep); }
+      .cam-preview.hot { border-color: var(--yellow); box-shadow: 0 0 0 5px rgba(255,212,59,.45); }
+      .cam-preview.off { display: none; }
+      .face-warn {
+        position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 6;
+        background: rgba(201,42,42,.92); color: #fff; font-family: "Baloo 2", sans-serif; font-weight: 800;
+        font-size: 17px; padding: 8px 18px; border-radius: 999px; display: none; white-space: nowrap;
+      }
+      .face-warn.show { display: block; }
+      .toast {
+        position: absolute; top: 52px; left: 50%; transform: translateX(-50%); z-index: 6; pointer-events: none;
+        font-family: "Baloo 2", sans-serif; font-weight: 800; font-size: 30px; color: #fff;
+        text-shadow: 0 3px 0 rgba(0,0,0,.25); opacity: 0; transition: opacity .15s, transform .15s; white-space: nowrap;
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) scale(1.12); }
+      .overlay {
+        position: absolute; inset: 0; z-index: 8; display: none; flex-direction: column; align-items: center; justify-content: center;
+        background: rgba(43, 30, 48, .55); backdrop-filter: blur(2px); text-align: center; padding: 20px;
+      }
+      .overlay.show { display: flex; }
+      .overlay .big-emoji { font-size: 84px; }
+      .overlay h2 { color: #fff; font-size: 32px; margin-top: 6px; text-shadow: 0 3px 0 rgba(0,0,0,.25); }
+      .overlay p { color: #ffe9f2; font-weight: 800; font-size: 18px; margin: 8px 0 0; max-width: 300px; }
+      .overlay .mini-btn { margin-top: 18px; background: var(--yellow); color: #5f4300; font-size: 21px; font-weight: 800;
+        padding: 13px 30px; border-radius: 999px; box-shadow: var(--btn-shadow); }
+      .calib-bar { width: 240px; height: 20px; border-radius: 999px; background: rgba(255,255,255,.3); margin-top: 16px; overflow: hidden; }
+      .calib-bar i { display: block; height: 100%; width: 0%; background: var(--yellow); border-radius: 999px; transition: width .1s linear; }
+      .pad { display: none; gap: 12px; margin-top: 14px; }
+      .pad.show { display: flex; }
+      .pad button {
+        flex: 1; padding: 20px 8px; font-size: 21px; font-weight: 800; border-radius: 22px; color: #fff;
+        background: var(--pink-deep); box-shadow: var(--btn-shadow); user-select: none; -webkit-user-select: none; touch-action: none;
+      }
+      .pad button.alt { background: var(--sky); }
+      .pad button:active, .pad button.held { transform: translateY(3px); filter: brightness(1.12); }
+      .mode-note { text-align: center; font-weight: 800; color: var(--ink-soft); font-size: 15.5px; margin-top: 12px; }
+
+      /* ---------- GAME OVER ---------- */
+      .over-card { background: var(--card); border-radius: 30px; box-shadow: var(--shadow); border: 3px solid var(--line); padding: 28px 20px; text-align: center; margin-top: 14px; }
+      .over-card .stars { font-size: 52px; letter-spacing: 6px; }
+      .over-card h2 { font-size: 36px; color: var(--pink-deep); }
+      .over-card .score-big { font-family: "Baloo 2", sans-serif; font-size: 64px; font-weight: 800; color: var(--orange); line-height: 1; margin-top: 6px; }
+      .over-card .best-line { font-weight: 800; color: var(--ink-soft); font-size: 18px; margin-top: 6px; }
+      .over-card .newbest { display: inline-block; margin-top: 10px; background: var(--yellow); color: #5f4300; font-weight: 800;
+        padding: 5px 16px; border-radius: 999px; font-size: 16px; }
+      footer { text-align: center; margin-top: 26px; color: var(--ink-soft); font-weight: 700; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+
+      <!-- ============ MENU ============ -->
+      <section id="scr-menu" class="screen active">
+        <div class="hero">
+          <div class="faces" aria-hidden="true">😺 🐦 😄 🐸 😴</div>
+          <h1>Wajah <span class="alt">Ceria</span></h1>
+          <p>Main pakai wajahmu! Gerakkan wajah &amp; kepalamu, karakternya ikut bergerak. Seru!</p>
+        </div>
+        <div class="cam-note" id="cam-note">📷 Game ini pakai <b>kamera</b> ya. Nanti tekan tombol game, lalu izinkan kamera.<br/>Kalau tidak ada kamera, tetap bisa main pakai <b>tombol</b> kok!</div>
+        <div class="grid" id="menu-grid"></div>
+        <footer>Dibuat untuk bermain sambil tertawa 😄<br/>Semakin lama main, semakin cepat &amp; seru!</footer>
+      </section>
+
+      <!-- ============ INTRO ============ -->
+      <section id="scr-intro" class="screen">
+        <div class="top-row">
+          <button class="back-link" id="intro-back">⬅ Kembali</button>
+          <button class="icon-btn" id="mute-btn-1" aria-label="Suara nyala/mati">🔊</button>
+        </div>
+        <div class="intro-card">
+          <span class="mascot bob" id="intro-mascot">🐱</span>
+          <h2 id="intro-title">Kucing Lapar</h2>
+          <div class="move" id="intro-move">Buka mulutmu lebar-lebar!</div>
+          <p class="desc" id="intro-desc"></p>
+          <div><span class="warn-chip" id="intro-warn" style="display:none"></span></div>
+          <button class="big-btn pink" id="intro-start">▶ MULAI MAIN</button>
+          <button class="ghost-btn" id="intro-start-btn-mode">Main Pakai Tombol Saja 🎮</button>
+        </div>
+      </section>
+
+      <!-- ============ GAME ============ -->
+      <section id="scr-game" class="screen">
+        <div class="hud">
+          <button class="icon-btn" id="game-exit" aria-label="Keluar ke menu">✖</button>
+          <span class="pill">⭐ <span id="hud-score">0</span></span>
+          <span class="pill">Lv <span id="hud-level">1</span></span>
+          <span class="pill hearts" id="hud-hearts">❤️❤️❤️</span>
+          <button class="icon-btn" id="mute-btn-2" aria-label="Suara nyala/mati">🔊</button>
+        </div>
+        <div class="stage">
+          <canvas id="cv" width="440" height="560"></canvas>
+          <div class="face-warn" id="face-warn">👀 Wajahmu tidak terlihat!</div>
+          <div class="toast" id="toast"></div>
+          <div class="cam-preview off" id="cam-preview"><video id="cam-video" playsinline muted autoplay></video></div>
+          <div class="overlay" id="overlay">
+            <span class="big-emoji" id="ov-emoji">📷</span>
+            <h2 id="ov-title">Boleh pinjam kameranya?</h2>
+            <p id="ov-text">Biar bisa main bareng pakai wajahmu!</p>
+            <div class="calib-bar" id="calib-bar" style="display:none"><i id="calib-fill"></i></div>
+            <button class="mini-btn" id="ov-btn">Boleh! 📷</button>
+          </div>
+        </div>
+        <div class="pad" id="pad"></div>
+        <p class="mode-note" id="mode-note"></p>
+      </section>
+
+      <!-- ============ GAME OVER ============ -->
+      <section id="scr-over" class="screen">
+        <div class="over-card">
+          <div class="stars" id="over-stars">⭐⭐⭐</div>
+          <h2>Coba Lagi!<br/>Kamu Hebat! 🎉</h2>
+          <div class="score-big" id="over-score">0</div>
+          <div class="best-line" id="over-best">Skor terbaik: 0</div>
+          <div><span class="newbest" id="over-newbest" style="display:none">🏆 Rekor Baru!</span></div>
+          <button class="big-btn pink" id="over-again">Main Lagi 🔁</button>
+          <button class="ghost-btn" id="over-menu">Ke Menu Utama 🏠</button>
+        </div>
+      </section>
+
+    </div>
+
+    <script>
+    "use strict";
+    /* ================= UTIL & AUDIO ================= */
+    const $ = (id) => document.getElementById(id);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const lerp = (a, b, t) => a + (b - a) * t;
+    const rand = (a, b) => a + Math.random() * (b - a);
+
+    let audioCtx = null, muted = false;
+    function ac() {
+      if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } }
+      if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+    function tone(freq, dur, type, vol, slideTo, delay) {
+      if (muted) return;
+      const ctx = ac(); if (!ctx) return;
+      const t0 = ctx.currentTime + (delay || 0);
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = type || "sine"; o.frequency.setValueAtTime(freq, t0);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol || 0.16, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t0); o.stop(t0 + dur + 0.05);
+    }
+    const sfx = {
+      pop:     () => tone(520, 0.12, "square", 0.10, 880),
+      yum:     () => { tone(300, 0.1, "sine", 0.18, 520); tone(430, 0.12, "sine", 0.16, 640, 0.07); },
+      jump:    () => tone(280, 0.22, "sine", 0.16, 720),
+      sparkle: () => { tone(1180, 0.1, "sine", 0.13); tone(1560, 0.14, "sine", 0.12, null, 0.07); },
+      hurt:    () => tone(220, 0.28, "sawtooth", 0.10, 110),
+      fanfare: () => { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.22, "triangle", 0.16, null, i * 0.11)); },
+      click:   () => tone(660, 0.07, "sine", 0.10),
+    };
+    function setMuted(m) {
+      muted = m;
+      $("mute-btn-1").textContent = m ? "🔇" : "🔊";
+      $("mute-btn-2").textContent = m ? "🔇" : "🔊";
+    }
+    $("mute-btn-1").addEventListener("click", () => { setMuted(!muted); sfx.click(); });
+    $("mute-btn-2").addEventListener("click", () => { setMuted(!muted); sfx.click(); });
+
+    /* ================= HISCORE (memori sesi ini) ================= */
+    const best = { cat: 0, bird: 0, balloon: 0, frog: 0, firefly: 0 };
+
+    /* ================= FACE ENGINE ================= */
+    // Sinyal wajah ternormalisasi, dihitung dari landmark MediaPipe FaceMesh.
+    const face = {
+      ready: false, present: false, lastSeen: 0,
+      jaw: 0,        // 0..1 bukaan mulut relatif
+      smile: 0,      // 0..1 lebar senyum relatif
+      blink: 0,      // 0..1 kedipan (1 = mata tertutup)
+      roll: 0,       // derajat miring kepala (negatif = miring kiri dari sisi pemain)
+      noseDrop: 0,   // 0..1 posisi hidung turun relatif thd netral
+      raw: null,     // sinyal mentah terakhir untuk kalibrasi
+    };
+    // Kalibrasi per pemain (baseline netral + rentang gerakan), berlaku lintas game selama sesi.
+    const calib = {
+      done: false,
+      jaw0: 0.012, jaw1: 0.16,       // rasio jarak bibir / tinggi wajah
+      smile0: 0.34, smile1: 0.52,    // rasio lebar mulut / lebar wajah
+      eye0: 0.30,                    // rasio buka mata netral
+      noseY0: 0.46,                  // posisi hidung netral (relatif bbox wajah)
+      noseDown: 0.60,                // posisi hidung saat angguk
+    };
+    let videoStream = null, faceMesh = null, fmBusy = false, camWanted = false;
+
+    function dist(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return Math.hypot(dx, dy); }
+    function computeSignals(lm) {
+      // bbox wajah
+      let minX = 1, maxX = 0, minY = 1, maxY = 0;
+      for (let i = 0; i < lm.length; i++) { const p = lm[i]; if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x; if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
+      const fw = Math.max(0.05, maxX - minX), fh = Math.max(0.05, maxY - minY);
+      const jawR = dist(lm[13], lm[14]) / fh;                    // bibir atas-bawah
+      const smileR = dist(lm[61], lm[291]) / fw;                // sudut mulut
+      const eyeL = dist(lm[159], lm[145]) / Math.max(0.01, dist(lm[33], lm[133]));
+      const eyeR = dist(lm[386], lm[374]) / Math.max(0.01, dist(lm[362], lm[263]));
+      const eyeOpen = (eyeL + eyeR) / 2;
+      // roll dari garis mata (koordinat dicerminkan agar cocok dgn pandangan pemain)
+      const le = lm[33], re = lm[263];
+      const roll = Math.atan2(re.y - le.y, (1 - re.x) - (1 - le.x)) * 180 / Math.PI * -1;
+      const noseRel = (lm[1].y - minY) / fh;
+      const raw = { jawR, smileR, eyeOpen, noseRel };
+      face.raw = raw;
+      face.jaw = clamp((jawR - calib.jaw0) / Math.max(0.02, calib.jaw1 - calib.jaw0), 0, 1);
+      face.smile = clamp((smileR - calib.smile0) / Math.max(0.03, calib.smile1 - calib.smile0), 0, 1);
+      face.blink = clamp(1 - eyeOpen / Math.max(0.08, calib.eye0), 0, 1);
+      face.roll = roll;
+      face.noseDrop = clamp((noseRel - calib.noseY0) / Math.max(0.04, calib.noseDown - calib.noseY0), 0, 1);
+    }
+    async function startCamera() {
+      const video = $("cam-video");
+      if (videoStream) { face.ready = true; return true; }
+      if (typeof FaceMesh === "undefined") return false;
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: "user" }, audio: false });
+      } catch (e) { return false; }
+      video.srcObject = videoStream;
+      try { await video.play(); } catch (e) { }
+      if (!faceMesh) {
+        faceMesh = new FaceMesh({ locateFile: (f) => "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/" + f });
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+        faceMesh.onResults((res) => {
+          fmBusy = false;
+          const lm = res.multiFaceLandmarks && res.multiFaceLandmarks[0];
+          if (lm) { face.present = true; face.lastSeen = performance.now(); computeSignals(lm); }
+          else face.present = false;
+        });
+      }
+      face.ready = true;
+      (function pump() {
+        if (!camWanted) return;
+        if (!fmBusy && video.readyState >= 2) { fmBusy = true; faceMesh.send({ image: video }).catch(() => { fmBusy = false; }); }
+        requestAnimationFrame(pump);
+      })();
+      return true;
+    }
+    /* ================= INPUT (kamera ATAU tombol/keyboard) ================= */
+    // Satu sumber kebenaran untuk semua game: nilai kontinu + event tepi (edge).
+    const input = {
+      mode: "button",            // "camera" | "button"
+      jaw: 0, smile: 0, tilt: 0, // kontinu: tilt -1 (kiri) .. 1 (kanan)
+      blinkEdge: false, nodEdge: false,
+      _blinkWas: false, _nodArmed: true,
+      btn: { jaw: 0, smile: 0, left: false, right: false, jawHeld: false, smileHeld: false, jawRel: 0, smileRel: 0 },
+      consumeBlink() { const v = this.blinkEdge; this.blinkEdge = false; return v; },
+      consumeNod() { const v = this.nodEdge; this.nodEdge = false; return v; },
+      update() {
+        if (this.mode === "camera" && face.ready) {
+          this.jaw = face.present ? face.jaw : 0;
+          this.smile = face.present ? face.smile : 0;
+          this.tilt = face.present ? clamp(face.roll / 22, -1, 1) : 0;
+          const b = face.present && face.blink > 0.62;
+          if (b && !this._blinkWas) this.blinkEdge = true;
+          this._blinkWas = b;
+          const nd = face.present && face.noseDrop > 0.55;
+          if (nd && this._nodArmed) { this.nodEdge = true; this._nodArmed = false; }
+          if (face.present && face.noseDrop < 0.2) this._nodArmed = true;
+        } else {
+          // Latch ramah anak: gerakan bertahan ~0,3 dtk setelah tombol dilepas,
+          // jadi mengetuk cepat pun terbaca seperti menahan sebentar.
+          const now = performance.now();
+          if (!this.btn.jawHeld && this.btn.jaw && now - this.btn.jawRel > 300) this.btn.jaw = 0;
+          if (!this.btn.smileHeld && this.btn.smile && now - this.btn.smileRel > 300) this.btn.smile = 0;
+          this.jaw = this.btn.jaw; this.smile = this.btn.smile;
+          this.tilt = (this.btn.right ? 1 : 0) - (this.btn.left ? 1 : 0);
+        }
+      },
+    };
+    // Keyboard fallback: spasi = aksi utama, panah = miring, B = kedip, bawah = angguk
+    const padButtons = []; // diisi per game: {el, onDown, onUp}
+    window.addEventListener("keydown", (e) => {
+      if (!$("scr-game").classList.contains("active")) return;
+      if (e.repeat) return;
+      if (e.code === "Space") { e.preventDefault(); padButtons.forEach((p) => p.main && p.onDown()); }
+      if (e.code === "ArrowLeft") input.btn.left = true;
+      if (e.code === "ArrowRight") input.btn.right = true;
+      if (e.code === "ArrowDown") { e.preventDefault(); input.nodEdge = true; }
+      if (e.code === "KeyB") input.blinkEdge = true;
+    });
+    window.addEventListener("keyup", (e) => {
+      if (e.code === "Space") padButtons.forEach((p) => p.main && p.onUp && p.onUp());
+      if (e.code === "ArrowLeft") input.btn.left = false;
+      if (e.code === "ArrowRight") input.btn.right = false;
+    });
+
+    /* ================= LAYAR & ALUR ================= */
+    const screens = ["scr-menu", "scr-intro", "scr-game", "scr-over"];
+    function show(id) { screens.forEach((s) => $(s).classList.toggle("active", s === id)); window.scrollTo(0, 0); }
+    let currentGame = null, usingCamera = false;
+
+    function toast(txt) {
+      const t = $("toast"); t.textContent = txt; t.classList.add("show");
+      clearTimeout(toast._t); toast._t = setTimeout(() => { t.classList.remove("show"); setTimeout(() => { if (!t.classList.contains("show")) t.textContent = ""; }, 200); }, 750);
+    }
+    function toastClear() { clearTimeout(toast._t); const t = $("toast"); t.classList.remove("show"); t.textContent = ""; }
+    function overlayShow(emoji, title, text, btnText, onBtn, showBar) {
+      $("ov-emoji").textContent = emoji; $("ov-title").textContent = title; $("ov-text").textContent = text;
+      const b = $("ov-btn"); b.textContent = btnText; b.style.display = onBtn ? "" : "none";
+      b.onclick = onBtn || null;
+      $("calib-bar").style.display = showBar ? "" : "none";
+      $("overlay").classList.add("show");
+    }
+    function overlayHide() { $("overlay").classList.remove("show"); }
+    function heartsHtml(n) { return "❤️".repeat(n) + "🤍".repeat(Math.max(0, 3 - n)); }
+
+    /* Loop utama */
+    const cv = $("cv"), ctx = cv.getContext("2d");
+    const W = 440, H = 560;
+    let rafId = null, lastT = 0;
+    function loop(t) {
+      rafId = requestAnimationFrame(loop);
+      const dt = Math.min(0.05, (t - lastT) / 1000 || 0.016); lastT = t;
+      input.update();
+      if (currentGame && currentGame.running) {
+        currentGame.elapsed += dt;
+        const lv = Math.min(8, 1 + Math.floor(Math.max(currentGame.elapsed / 20, currentGame.score / 100)));
+        if (lv !== currentGame.level) { currentGame.level = lv; $("hud-level").textContent = lv; toast("Level " + lv + "! 🚀"); }
+        currentGame.update(dt);
+        currentGame.draw(ctx);
+        $("hud-score").textContent = currentGame.score;
+        $("hud-hearts").textContent = heartsHtml(currentGame.hearts);
+        // status preview kamera
+        const pv = $("cam-preview");
+        if (input.mode === "camera") {
+          pv.classList.toggle("on", face.present);
+          pv.classList.toggle("hot", face.present && currentGame.gestureActive());
+          $("face-warn").classList.toggle("show", !face.present && performance.now() - face.lastSeen > 600);
+        }
+      }
+    }
+    function startLoop() { if (!rafId) { lastT = performance.now(); rafId = requestAnimationFrame(loop); } }
+
+    function endGame() {
+      const g = currentGame; if (!g) return;
+      g.running = false;
+      sfx.fanfare();
+      const isBest = g.score > best[g.id];
+      if (isBest) best[g.id] = g.score;
+      $("over-stars").textContent = g.score >= 150 ? "⭐⭐⭐" : g.score >= 70 ? "⭐⭐☆" : "⭐☆☆";
+      $("over-score").textContent = g.score;
+      $("over-best").textContent = "Skor terbaik: " + best[g.id];
+      $("over-newbest").style.display = isBest && g.score > 0 ? "" : "none";
+      renderMenu();
+      show("scr-over");
+    }
+    function loseHeart(g, msg) {
+      g.hearts--; sfx.hurt(); toast(msg || "Aduh! 💔");
+      if (g.hearts <= 0) { setTimeout(endGame, 450); g.running = false; g.dying = true; g.draw(ctx); }
+    }
+
+    /* ---------- Kalibrasi singkat ---------- */
+    // Fase 1: wajah santai ~1,2 dtk. Fase 2: lakukan gerakan game ini ~1,6 dtk.
+    function runCalibration(game, done) {
+      if (input.mode !== "camera" || calib.done) { done(); return; }
+      const samples = { j0: [], s0: [], e0: [], n0: [], j1: [], s1: [], n1: [] };
+      overlayShow(game.emoji, "Lihat kamera, santai dulu ya 😌", "Senyum kecil saja, jangan bergerak dulu…", null, null, true);
+      collect(1200, () => { if (face.raw) { samples.j0.push(face.raw.jawR); samples.s0.push(face.raw.smileR); samples.e0.push(face.raw.eyeOpen); samples.n0.push(face.raw.noseRel); } }, () => {
+        const avg = (a, d) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : d;
+        calib.jaw0 = avg(samples.j0, calib.jaw0); calib.smile0 = avg(samples.s0, calib.smile0);
+        calib.eye0 = avg(samples.e0, calib.eye0); calib.noseY0 = avg(samples.n0, calib.noseY0);
+        overlayShow(game.emoji, game.calibText, "Tahan sebentar ya… kamu pasti bisa!", null, null, true);
+        collect(1600, () => { if (face.raw) { samples.j1.push(face.raw.jawR); samples.s1.push(face.raw.smileR); samples.n1.push(face.raw.noseRel); } }, () => {
+          const mx = (a, d) => a.length ? Math.max.apply(null, a) : d;
+          const gJaw = mx(samples.j1, 0), gSmile = mx(samples.s1, 0), gNose = mx(samples.n1, 0);
+          if (gJaw > calib.jaw0 + 0.03) calib.jaw1 = calib.jaw0 + (gJaw - calib.jaw0) * 0.8;
+          if (gSmile > calib.smile0 + 0.03) calib.smile1 = calib.smile0 + (gSmile - calib.smile0) * 0.85;
+          if (gNose > calib.noseY0 + 0.03) calib.noseDown = calib.noseY0 + (gNose - calib.noseY0) * 0.85;
+          calib.done = true;
+          overlayHide(); done();
+        });
+      });
+      function collect(ms, sample, after) {
+        const t0 = performance.now();
+        (function step() {
+          sample();
+          const p = clamp((performance.now() - t0) / ms, 0, 1);
+          $("calib-fill").style.width = (p * 100) + "%";
+          if (p < 1 && currentGame && $("scr-game").classList.contains("active")) setTimeout(step, 60);
+          else after();
+        })();
+      }
+    }
+
+    /* ---------- Mulai game ---------- */
+    function launchGame(game, wantCamera) {
+      currentGame = game;
+      game.reset();
+      toastClear();
+      input.mode = wantCamera ? "camera" : "button";
+      $("hud-score").textContent = "0"; $("hud-level").textContent = "1";
+      $("hud-hearts").textContent = heartsHtml(3);
+      buildPad(game);
+      show("scr-game");
+      startLoop();
+      input.btn.jaw = 0; input.btn.smile = 0; input.btn.left = input.btn.right = false; input.btn.jawHeld = input.btn.smileHeld = false;
+      if (wantCamera) {
+        input.mode = "camera"; camWanted = true;
+        overlayShow("📷", "Boleh pinjam kameranya?", "Biar bisa main bareng pakai wajahmu!", "Boleh! 📷", async () => {
+          overlayShow("⏳", "Sebentar ya…", "Kameranya sedang disiapkan…", null, null, false);
+          const ok = await startCamera();
+          if (ok) {
+            usingCamera = true;
+            $("cam-preview").classList.remove("off");
+            $("mode-note").textContent = "📷 Mode kamera — gerakkan wajahmu!";
+            runCalibration(game, () => { game.running = true; });
+          } else {
+            input.mode = "button"; usingCamera = false;
+            $("cam-preview").classList.add("off");
+            overlayShow("🎮", "Kameranya belum bisa dipakai", "Tidak apa-apa! Main pakai tombol di bawah ya.", "Siap! 🎮", () => { overlayHide(); game.running = true; }, false);
+            $("pad").classList.add("show");
+            $("mode-note").textContent = "🎮 Mode tombol — tekan tombol besar di bawah!";
+          }
+        }, false);
+      } else {
+        input.mode = "button"; usingCamera = false;
+        $("cam-preview").classList.add("off");
+        $("pad").classList.add("show");
+        $("mode-note").textContent = "🎮 Mode tombol — tekan tombol besar di bawah!";
+        overlayHide();
+        game.running = true;
+      }
+    }
+    function buildPad(game) {
+      const pad = $("pad"); pad.innerHTML = ""; padButtons.length = 0;
+      pad.classList.toggle("show", input.mode === "button" && !!game.pad);
+      if (!game.pad) return;
+      game.pad.forEach((def) => {
+        const b = document.createElement("button");
+        b.textContent = def.label; if (def.alt) b.className = "alt";
+        const down = (e) => { e.preventDefault(); b.classList.add("held"); def.down(); };
+        const up = () => { b.classList.remove("held"); if (def.up) def.up(); };
+        b.addEventListener("pointerdown", down);
+        b.addEventListener("pointerup", up); b.addEventListener("pointerleave", up); b.addEventListener("pointercancel", up);
+        pad.appendChild(b);
+        if (def.main) padButtons.push({ el: b, main: true, onDown: def.down, onUp: def.up });
+      });
+    }
+    $("game-exit").addEventListener("click", () => {
+      sfx.click();
+      if (currentGame) { currentGame.running = false; currentGame = null; }
+      camWanted = false; overlayHide(); renderMenu(); show("scr-menu");
+    });
+    $("over-again").addEventListener("click", () => { sfx.click(); if (currentGame) launchGame(currentGame, usingCamera); });
+    $("over-menu").addEventListener("click", () => { sfx.click(); currentGame = null; camWanted = false; renderMenu(); show("scr-menu"); });
+    /* ================= GAMBAR BANTUAN ================= */
+    function emoji(txt, x, y, size) { ctx.font = size + "px serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(txt, x, y); }
+    function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+    function skyGrad(top, bot) { const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, top); g.addColorStop(1, bot); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); }
+    function baseGame(id, emojiChar) {
+      return { id, emoji: emojiChar, score: 0, hearts: 3, level: 1, elapsed: 0, running: false, dying: false,
+        reset() { this.score = 0; this.hearts = 3; this.level = 1; this.elapsed = 0; this.running = false; this.dying = false; this.init && this.init(); },
+        speedMul() { return Math.pow(1.15, this.level - 1); } };
+    }
+
+    /* ================= GAME 1: KUCING LAPAR (mangap) ================= */
+    const gameCat = Object.assign(baseGame("cat", "🐱"), {
+      title: "Kucing Lapar", move: "Buka mulutmu lebar-lebar! 😺",
+      desc: "Ikan-ikan jatuh dari atas. Buka mulutmu saat ikan pas di mulut kucing… NYAM! Ikan dimakan, dapat poin!",
+      warn: "🥾 Hati-hati sepatu busuk! Jangan dimakan ya!",
+      calibText: "Sekarang buka mulutmu lebar-lebar! 😮",
+      pad: [{ label: "😮 BUKA MULUT", main: true, down: () => { input.btn.jaw = 1; input.btn.jawHeld = true; }, up: () => { input.btn.jawHeld = false; input.btn.jawRel = performance.now(); } }],
+      gestureActive: () => input.jaw > 0.45,
+      items: [], spawnT: 0,
+      init() { this.items = []; this.spawnT = 0.4; },
+      update(dt) {
+        this.spawnT -= dt;
+        const gap = Math.max(0.55, 1.5 / this.speedMul());
+        if (this.spawnT <= 0) {
+          this.spawnT = gap * rand(0.75, 1.25);
+          const bad = Math.random() < Math.min(0.30, 0.10 + this.level * 0.025);
+          const off = (Math.random() + Math.random() - 1) * 175; // cenderung ke tengah, dekat mulut kucing
+          this.items.push({ x: clamp(W / 2 + off, 40, W - 40), y: -30, bad, vy: rand(95, 125) * this.speedMul(), rot: rand(-0.3, 0.3), eaten: false });
+        }
+        const mouthY = H - 118, open = input.jaw > 0.45;
+        for (const it of this.items) {
+          it.y += it.vy * dt;
+          if (!it.eaten && open && Math.abs(it.y - mouthY) < 34 && Math.abs(it.x - W / 2) < 62) {
+            it.eaten = true;
+            if (it.bad) { loseHeart(this, "Iiih, sepatu busuk! 🤢"); }
+            else { this.score += 10; sfx.yum(); toast("Nyam! +10 🐟"); }
+          }
+        }
+        this.items = this.items.filter((it) => !it.eaten && it.y < H + 40);
+        if (this.dying) return;
+      },
+      draw(c) {
+        skyGrad("#aee3ff", "#e8fbff");
+        c.fillStyle = "#8ed081"; c.fillRect(0, H - 58, W, 58);
+        c.fillStyle = "#7bc96f"; for (let i = 0; i < 8; i++) c.fillRect(i * 58 + 10, H - 58, 8, -10 - (i % 3) * 5);
+        for (const it of this.items) { c.save(); c.translate(it.x, it.y); c.rotate(it.rot); emoji(it.bad ? "🥾" : "🐟", 0, 0, 46); c.restore(); }
+        // kucing digambar kode: kepala oranye + telinga + kumis; mulut mengikuti pemain
+        const cx = W / 2, cy = H - 118, R = 62, open = clamp(input.jaw, 0, 1);
+        c.fillStyle = "#ffb26b";
+        c.beginPath(); c.moveTo(cx - 52, cy - 34); c.lineTo(cx - 58, cy - 84); c.lineTo(cx - 20, cy - 58); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(cx + 52, cy - 34); c.lineTo(cx + 58, cy - 84); c.lineTo(cx + 20, cy - 58); c.closePath(); c.fill();
+        c.fillStyle = "#ffcf99";
+        c.beginPath(); c.moveTo(cx - 50, cy - 40); c.lineTo(cx - 53, cy - 74); c.lineTo(cx - 26, cy - 54); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(cx + 50, cy - 40); c.lineTo(cx + 53, cy - 74); c.lineTo(cx + 26, cy - 54); c.closePath(); c.fill();
+        c.fillStyle = "#ffb26b"; c.beginPath(); c.arc(cx, cy, R, 0, 7); c.fill();
+        c.fillStyle = "#ffd9ad"; c.beginPath(); c.ellipse(cx, cy + 24, 36, 26, 0, 0, 7); c.fill();
+        c.fillStyle = "#4a3226";
+        c.beginPath(); c.arc(cx - 24, cy - 12, 6, 0, 7); c.fill();
+        c.beginPath(); c.arc(cx + 24, cy - 12, 6, 0, 7); c.fill();
+        c.fillStyle = "#ff8fab"; c.beginPath(); c.moveTo(cx - 7, cy + 4); c.lineTo(cx + 7, cy + 4); c.lineTo(cx, cy + 13); c.closePath(); c.fill();
+        c.strokeStyle = "rgba(74,50,38,.55)"; c.lineWidth = 2.5; c.lineCap = "round";
+        [-1, 1].forEach((s) => { for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(cx + s * 38, cy + 8 + i * 7); c.lineTo(cx + s * 72, cy + 2 + i * 10); c.stroke(); } });
+        const mh = 4 + open * 26;
+        c.fillStyle = "#a13d4f"; c.beginPath(); c.ellipse(cx, cy + 26, 10 + open * 9, mh, 0, 0, 7); c.fill();
+        if (open > 0.5) { c.fillStyle = "#ff8fab"; c.beginPath(); c.ellipse(cx, cy + 30 + mh * 0.3, 6 + open * 4, mh * 0.38, 0, 0, 7); c.fill(); }
+      },
+    });
+
+    /* ================= GAME 2: BURUNG TERBANG (miring kepala) ================= */
+    const gameBird = Object.assign(baseGame("bird", "🐦"), {
+      title: "Burung Terbang", move: "Miringkan kepalamu! Kiri = naik, kanan = turun 🐦",
+      desc: "Burung terbang sendiri ke depan. Miringkan kepala ke kiri supaya burung naik, ke kanan supaya turun. Lewati celah awan dan ambil bintang!",
+      warn: "☁️ Jangan nabrak awan ya!",
+      calibText: "Sekarang miringkan kepalamu ke kiri… lalu ke kanan! 🙂",
+      pad: [
+        { label: "⬆ NAIK", alt: true, down: () => { input.btn.left = true; }, up: () => { input.btn.left = false; } },
+        { label: "⬇ TURUN", down: () => { input.btn.right = true; }, up: () => { input.btn.right = false; } },
+      ],
+      gestureActive: () => Math.abs(input.tilt) > 0.35,
+      by: H / 2, bvy: 0, walls: [], stars: [], spawnT: 0, invuln: 0,
+      init() { this.by = H / 2; this.bvy = 0; this.walls = []; this.stars = []; this.spawnT = 0.8; this.invuln = 0; },
+      update(dt) {
+        this.invuln = Math.max(0, this.invuln - dt);
+        const target = input.tilt * 300;
+        this.bvy = lerp(this.bvy, target, 1 - Math.pow(0.0015, dt));
+        this.by = clamp(this.by + this.bvy * dt, 34, H - 34);
+        const scroll = 120 * this.speedMul();
+        this.spawnT -= dt;
+        if (this.spawnT <= 0) {
+          this.spawnT = Math.max(1.15, 2.1 / this.speedMul());
+          const gapH = Math.max(120, 190 - this.level * 9);
+          const gy = rand(gapH / 2 + 26, H - gapH / 2 - 26);
+          this.walls.push({ x: W + 60, gy, gapH, passed: false });
+          if (Math.random() < 0.75) this.stars.push({ x: W + 60, y: gy + rand(-gapH / 4, gapH / 4), got: false });
+        }
+        const bx = 108;
+        for (const w of this.walls) {
+          w.x -= scroll * dt;
+          if (!w.passed && w.x < bx - 30) { w.passed = true; this.score += 5; }
+          if (this.invuln <= 0 && Math.abs(w.x - bx) < 46 && (this.by < w.gy - w.gapH / 2 + 20 || this.by > w.gy + w.gapH / 2 - 20)) {
+            this.invuln = 1.4; loseHeart(this, "Aduh, nabrak awan! ☁️");
+          }
+        }
+        for (const s of this.stars) {
+          s.x -= scroll * dt;
+          if (!s.got && Math.abs(s.x - bx) < 34 && Math.abs(s.y - this.by) < 36) { s.got = true; this.score += 10; sfx.sparkle(); toast("Bintang! +10 ⭐"); }
+        }
+        this.walls = this.walls.filter((w) => w.x > -80);
+        this.stars = this.stars.filter((s) => !s.got && s.x > -40);
+      },
+      draw(c) {
+        skyGrad("#8fd4ff", "#e3f7ff");
+        c.fillStyle = "rgba(255,255,255,.75)";
+        [[70, 66, 30], [330, 44, 22], [250, 96, 18]].forEach(([x, y, r]) => { c.beginPath(); c.arc(x, y, r, 0, 7); c.arc(x + r, y + 6, r * 0.75, 0, 7); c.fill(); });
+        const cloud = (x, y, s) => { c.fillStyle = "#ffffff"; c.beginPath(); c.arc(x, y, 26 * s, 0, 7); c.arc(x + 24 * s, y + 5 * s, 20 * s, 0, 7); c.arc(x - 24 * s, y + 6 * s, 18 * s, 0, 7); c.arc(x, y + 10 * s, 24 * s, 0, 7); c.fill(); };
+        for (const w of this.walls) {
+          for (let y = -6; y < w.gy - w.gapH / 2; y += 30) cloud(w.x + ((y / 30) % 2) * 12, y, 1.05);
+          for (let y = w.gy + w.gapH / 2 + 4; y < H + 10; y += 30) cloud(w.x + ((y / 30) % 2) * 12, y, 1.05);
+        }
+        for (const s of this.stars) emoji("⭐", s.x, s.y + Math.sin(performance.now() / 300 + s.x) * 4, 36);
+        if (!(this.invuln > 0 && Math.floor(performance.now() / 120) % 2)) emoji("🐦", 108, this.by, 58);
+      },
+    });
+    /* ================= GAME 3: BALON SENYUM (senyum) ================= */
+    const BALLOON_COLORS = ["#ff8fab", "#ffa94d", "#ffd43b", "#69db7c", "#4dabf7", "#e599f7"];
+    const gameBalloon = Object.assign(baseGame("balloon", "🎈"), {
+      title: "Balon Senyum", move: "Senyum yang lebar! 😄",
+      desc: "Balon-balon naik ke atas. Saat balon masuk lingkaran emas, SENYUM lebar-lebar… POP! Balon meletus, dapat poin!",
+      warn: "🌵 Balon duri warna hijau jangan dipecahkan ya!",
+      calibText: "Sekarang senyum yang lebaaaar! 😄",
+      pad: [{ label: "😄 SENYUM!", main: true, down: () => { input.btn.smile = 1; input.btn.smileHeld = true; }, up: () => { input.btn.smileHeld = false; input.btn.smileRel = performance.now(); } }],
+      gestureActive: () => input.smile > 0.5,
+      items: [], spawnT: 0, ring: { x: W / 2, y: 218, r: 62 },
+      init() { this.items = []; this.spawnT = 0.3; },
+      update(dt) {
+        this.spawnT -= dt;
+        if (this.spawnT <= 0) {
+          this.spawnT = Math.max(0.7, 1.6 / this.speedMul()) * rand(0.8, 1.2);
+          const bad = Math.random() < Math.min(0.28, 0.08 + this.level * 0.025);
+          this.items.push({ x: rand(48, W - 48), y: H + 50, vy: rand(62, 84) * this.speedMul(), bad, color: bad ? "#51cf66" : BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)], sway: rand(0, 6.28), popped: false });
+        }
+        const smiling = input.smile > 0.5, rg = this.ring;
+        for (const b of this.items) {
+          b.y -= b.vy * dt; b.sway += dt * 2; b.x += Math.sin(b.sway) * 14 * dt;
+          const inside = Math.hypot(b.x - rg.x, b.y - rg.y) < rg.r - 6;
+          if (inside && smiling && !b.popped) {
+            b.popped = true;
+            if (b.bad) loseHeart(this, "Aduh, kena duri! 🌵");
+            else { this.score += 10; sfx.pop(); toast("POP! +10 🎈"); }
+          }
+        }
+        this.items = this.items.filter((b) => !b.popped && b.y > -70);
+      },
+      draw(c) {
+        skyGrad("#ffe9f4", "#fff7ec");
+        c.fillStyle = "#ffd8ec"; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(40 + i * 74, H - 8, 26, 0, 7); c.fill(); }
+        const rg = this.ring;
+        c.strokeStyle = "#e8a90c"; c.lineWidth = 6; c.setLineDash([14, 9]);
+        c.beginPath(); c.arc(rg.x, rg.y, rg.r, 0, 7); c.stroke(); c.setLineDash([]);
+        c.fillStyle = "rgba(255,212,59,.14)"; c.beginPath(); c.arc(rg.x, rg.y, rg.r, 0, 7); c.fill();
+        emoji("🎯", rg.x, rg.y - rg.r - 24, 28);
+        for (const b of this.items) {
+          c.strokeStyle = "rgba(90,60,40,.5)"; c.lineWidth = 2;
+          c.beginPath(); c.moveTo(b.x, b.y + 30); c.quadraticCurveTo(b.x + 6, b.y + 48, b.x, b.y + 62); c.stroke();
+          c.fillStyle = b.color; c.beginPath(); c.ellipse(b.x, b.y, 27, 32, 0, 0, 7); c.fill();
+          c.fillStyle = "rgba(255,255,255,.45)"; c.beginPath(); c.ellipse(b.x - 9, b.y - 11, 7, 11, -0.5, 0, 7); c.fill();
+          c.fillStyle = b.color; c.beginPath(); c.moveTo(b.x - 5, b.y + 31); c.lineTo(b.x + 5, b.y + 31); c.lineTo(b.x, b.y + 39); c.closePath(); c.fill();
+          if (b.bad) emoji("🌵", b.x, b.y - 2, 30);
+        }
+      },
+    });
+
+    /* ================= GAME 4: KATAK LOMPAT (angguk) ================= */
+    const gameFrog = Object.assign(baseGame("frog", "🐸"), {
+      title: "Katak Lompat", move: "Anggukkan kepalamu ke bawah! 🐸",
+      desc: "Katak berlari sendiri. Anggukkan kepalamu… katak LOMPAT! Hindari batu dan tangkap lalat yang enak!",
+      warn: "🪨 Batu jangan ditabrak ya, lompat dulu!",
+      calibText: "Sekarang anggukkan kepalamu ke bawah! 🙇",
+      pad: [{ label: "🐸 LOMPAT!", main: true, down: () => { input.nodEdge = true; }, up: () => { } }],
+      gestureActive: () => false,
+      fy: 0, fvy: 0, grounded: true, items: [], spawnT: 0, groundY: H - 92,
+      init() { this.fy = 0; this.fvy = 0; this.grounded = true; this.items = []; this.spawnT = 1; },
+      update(dt) {
+        if (input.consumeNod() && this.grounded) { this.fvy = -880; this.grounded = false; sfx.jump(); }
+        if (!this.grounded) {
+          this.fvy += 2300 * dt; this.fy += this.fvy * dt;
+          if (this.fy >= 0) { this.fy = 0; this.fvy = 0; this.grounded = true; }
+        }
+        const scroll = 165 * this.speedMul();
+        this.spawnT -= dt;
+        if (this.spawnT <= 0) {
+          this.spawnT = Math.max(0.95, 2.05 / this.speedMul()) * rand(0.85, 1.3);
+          if (Math.random() < 0.62) this.items.push({ kind: "rock", x: W + 50, hit: false });
+          else this.items.push({ kind: "fly", x: W + 50, y: this.groundY - rand(105, 165), hit: false });
+        }
+        const fx = 104, fTop = this.groundY - 46 + this.fy;
+        for (const it of this.items) {
+          it.x -= scroll * dt;
+          if (it.hit) continue;
+          if (it.kind === "rock" && Math.abs(it.x - fx) < 36 && this.fy > -52) { it.hit = true; loseHeart(this, "Aduh, nabrak batu! 🪨"); }
+          if (it.kind === "fly" && Math.abs(it.x - fx) < 40 && Math.abs(it.y - fTop - 10) < 46) { it.hit = true; this.score += 10; sfx.yum(); toast("Lalat! +10 🪰"); }
+        }
+        this.items = this.items.filter((it) => it.x > -50 && !it.hit);
+      },
+      draw(c) {
+        skyGrad("#b8f1cc", "#f2fff4");
+        c.fillStyle = "#69db7c"; c.fillRect(0, this.groundY + 26, W, H - this.groundY);
+        c.fillStyle = "#51cf66"; c.fillRect(0, this.groundY + 26, W, 8);
+        c.fillStyle = "#37b24d";
+        const off = (performance.now() / 6) % 56;
+        for (let x = -off; x < W; x += 56) { c.beginPath(); c.moveTo(x, this.groundY + 26); c.lineTo(x + 7, this.groundY + 8); c.lineTo(x + 14, this.groundY + 26); c.fill(); }
+        for (const it of this.items) {
+          if (it.kind === "rock") emoji("🪨", it.x, this.groundY + 4, 52);
+          else emoji("🪰", it.x, it.y + Math.sin(performance.now() / 130 + it.x) * 5, 34);
+        }
+        emoji("🐸", 104, this.groundY - 22 + this.fy, 66);
+      },
+    });
+
+    /* ================= GAME 5: KUNANG-KUNANG (kedip) ================= */
+    const gameFirefly = Object.assign(baseGame("firefly", "✨"), {
+      title: "Kunang-Kunang", move: "Kedipkan matamu! 😉",
+      desc: "Malam hari, kunang-kunang terbang ke sana kemari. Saat kunang-kunang masuk lingkaran cahaya, KEDIP… tertangkap! Dapat poin!",
+      warn: "🪲 Kumbang hitam jangan ditangkap ya!",
+      calibText: "Tahan dulu… nanti kedipnya pas main saja ya! 😉",
+      pad: [{ label: "😉 KEDIP!", main: true, down: () => { input.blinkEdge = true; }, up: () => { } }],
+      gestureActive: () => false,
+      flies: [], spawnT: 0, ring: { x: W / 2, y: H / 2 - 20, r: 74 }, flash: 0,
+      init() { this.flies = []; this.spawnT = 0.2; this.flash = 0; for (let i = 0; i < 3; i++) this.spawnFly(false); },
+      spawnFly(allowBad) {
+        const bad = allowBad && Math.random() < Math.min(0.30, 0.10 + this.level * 0.026);
+        const a = rand(0, 6.28);
+        this.flies.push({ x: rand(40, W - 40), y: rand(50, H - 90), vx: Math.cos(a) * rand(30, 52) * this.speedMul(), vy: Math.sin(a) * rand(30, 52) * this.speedMul(), bad, wob: rand(0, 6.28) });
+      },
+      update(dt) {
+        this.flash = Math.max(0, this.flash - dt * 3);
+        this.spawnT -= dt;
+        if (this.spawnT <= 0 && this.flies.length < 6) { this.spawnT = 0.9; this.spawnFly(true); }
+        for (const f of this.flies) {
+          f.wob += dt * 3; f.x += (f.vx + Math.sin(f.wob) * 22) * dt; f.y += (f.vy + Math.cos(f.wob * 1.3) * 18) * dt;
+          if (f.x < 26 || f.x > W - 26) f.vx *= -1;
+          if (f.y < 30 || f.y > H - 60) f.vy *= -1;
+          f.x = clamp(f.x, 20, W - 20); f.y = clamp(f.y, 24, H - 54);
+        }
+        if (input.consumeBlink()) {
+          const rg = this.ring;
+          const inRing = this.flies.filter((f) => Math.hypot(f.x - rg.x, f.y - rg.y) < rg.r);
+          const good = inRing.find((f) => !f.bad), badOne = inRing.find((f) => f.bad);
+          if (good) {
+            this.flies.splice(this.flies.indexOf(good), 1);
+            this.score += 10; this.flash = 1; sfx.sparkle(); toast("Dapat! +10 ✨"); this.spawnFly(true);
+          } else if (badOne) {
+            this.flies.splice(this.flies.indexOf(badOne), 1);
+            loseHeart(this, "Aduh, itu kumbang! 🪲"); this.spawnFly(false);
+          }
+        }
+      },
+      draw(c) {
+        c.fillStyle = "#232a4d"; c.fillRect(0, 0, W, H);
+        c.fillStyle = "#fdf6d8"; c.beginPath(); c.arc(W - 74, 66, 30, 0, 7); c.fill();
+        c.fillStyle = "#232a4d"; c.beginPath(); c.arc(W - 90, 56, 26, 0, 7); c.fill();
+        c.fillStyle = "#fff";
+        for (let i = 0; i < 26; i++) { const sx = (i * 173) % W, sy = (i * 97) % 300; c.globalAlpha = 0.35 + ((i * 7) % 10) / 16; c.fillRect(sx, sy, 3, 3); }
+        c.globalAlpha = 1;
+        c.fillStyle = "#1b5e20"; c.fillRect(0, H - 46, W, 46);
+        c.fillStyle = "#2e7d32"; for (let i = 0; i < 9; i++) { c.beginPath(); c.moveTo(i * 52 + 6, H - 46); c.lineTo(i * 52 + 13, H - 66 - (i % 3) * 6); c.lineTo(i * 52 + 20, H - 46); c.fill(); }
+        const rg = this.ring;
+        const glow = c.createRadialGradient(rg.x, rg.y, 6, rg.x, rg.y, rg.r + 26);
+        glow.addColorStop(0, "rgba(255,236,150," + (0.30 + this.flash * 0.4) + ")"); glow.addColorStop(1, "rgba(255,236,150,0)");
+        c.fillStyle = glow; c.beginPath(); c.arc(rg.x, rg.y, rg.r + 26, 0, 7); c.fill();
+        c.strokeStyle = "#ffe66d"; c.lineWidth = 4; c.setLineDash([12, 8]);
+        c.beginPath(); c.arc(rg.x, rg.y, rg.r, 0, 7); c.stroke(); c.setLineDash([]);
+        for (const f of this.flies) {
+          if (f.bad) { emoji("🪲", f.x, f.y, 36); continue; }
+          const tw = 0.7 + Math.sin(performance.now() / 160 + f.wob * 3) * 0.3;
+          const g2 = c.createRadialGradient(f.x, f.y, 1, f.x, f.y, 17 * tw);
+          g2.addColorStop(0, "rgba(255,244,160,.95)"); g2.addColorStop(1, "rgba(255,244,160,0)");
+          c.fillStyle = g2; c.beginPath(); c.arc(f.x, f.y, 17 * tw, 0, 7); c.fill();
+          c.fillStyle = "#fff59d"; c.beginPath(); c.arc(f.x, f.y, 4.5, 0, 7); c.fill();
+        }
+      },
+    });
+
+    /* ================= MENU & INTRO ================= */
+    const GAMES = [gameCat, gameBird, gameBalloon, gameFrog, gameFirefly];
+    function renderMenu() {
+      const grid = $("menu-grid"); grid.innerHTML = "";
+      GAMES.forEach((g, i) => {
+        const b = document.createElement("button");
+        b.className = "game-card" + (i === GAMES.length - 1 ? " wide" : "");
+        b.innerHTML = '<span class="emoji">' + g.emoji + '</span><h3>' + g.title + '</h3><div class="how">' + g.move + '</div><span class="best">⭐ Terbaik: ' + best[g.id] + '</span>';
+        b.addEventListener("click", () => { sfx.click(); openIntro(g); });
+        grid.appendChild(b);
+      });
+    }
+    let introGame = null;
+    function openIntro(g) {
+      introGame = g;
+      $("intro-mascot").textContent = g.emoji;
+      $("intro-title").textContent = g.title;
+      $("intro-move").textContent = g.move;
+      $("intro-desc").textContent = g.desc;
+      const w = $("intro-warn");
+      if (g.warn) { w.style.display = ""; w.textContent = g.warn; } else w.style.display = "none";
+      show("scr-intro");
+    }
+    $("intro-back").addEventListener("click", () => { sfx.click(); renderMenu(); show("scr-menu"); });
+    $("intro-start").addEventListener("click", () => { ac(); sfx.click(); if (introGame) launchGame(introGame, true); });
+    $("intro-start-btn-mode").addEventListener("click", () => { ac(); sfx.click(); if (introGame) launchGame(introGame, false); });
+    renderMenu();
+</script>
+</body>
+</html>

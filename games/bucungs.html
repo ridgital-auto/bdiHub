@@ -1,0 +1,1926 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>Bucungs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@500;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      :root {
+        color-scheme: light dark;
+        --bg: #cdeffb;
+        --bg2: #eefaff;
+        --surface: #ffffff;
+        --surface2: #f2f9fc;
+        --ink: #17323f;
+        --muted: #5b7a89;
+        --line: #bcdcea;
+        --accent: #1f9d66;
+        --accent-dark: #157347;
+        --coral: #ff6b4a;
+        --amber: #ffb703;
+        --danger: #e63946;
+        --shadow: 0 10px 30px rgba(23, 50, 63, .16);
+        --overlay-bg: rgba(255, 255, 255, .92);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #08171f;
+          --bg2: #0d2432;
+          --surface: #122c3d;
+          --surface2: #0f2635;
+          --ink: #e7f4fa;
+          --muted: #9db9c7;
+          --line: #1f4359;
+          --accent: #2fbf7f;
+          --accent-dark: #2fbf7f;
+          --coral: #ff8266;
+          --shadow: 0 10px 30px rgba(0, 0, 0, .45);
+          --overlay-bg: rgba(10, 28, 39, .93);
+        }
+      }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Nunito", system-ui, sans-serif;
+        color: var(--ink);
+        background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+        min-height: 100vh;
+        padding: 14px 14px 30px;
+      }
+      .wrap { max-width: 980px; margin: 0 auto; }
+      h1, h2, h3 { font-family: "Baloo 2", "Nunito", sans-serif; margin: 0; }
+      p { margin: 0; }
+
+      .topbar {
+        display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+        justify-content: space-between; margin-bottom: 12px;
+      }
+      .chip {
+        display: inline-flex; align-items: center; gap: 8px;
+        background: var(--surface); border: 1.5px solid var(--line);
+        border-radius: 999px; padding: 7px 14px; font-weight: 800; font-size: 14px;
+        box-shadow: 0 2px 8px rgba(23,50,63,.07);
+      }
+      .chip svg { width: 18px; height: 18px; flex: none; }
+      .chip .num { font-family: "Baloo 2", sans-serif; font-size: 17px; color: var(--accent-dark); }
+      .chip.cam-off { color: var(--muted); }
+
+      .stage {
+        position: relative; width: 100%; aspect-ratio: 16 / 9;
+        border-radius: 20px; overflow: hidden; background: #79c9f2;
+        box-shadow: var(--shadow); border: 1.5px solid var(--line);
+        touch-action: manipulation; user-select: none; -webkit-user-select: none;
+      }
+      canvas#game { display: block; width: 100%; height: 100%; }
+
+      /* ---------- HUD ---------- */
+      .hud {
+        position: absolute; top: 0; left: 0; right: 0;
+        display: none; justify-content: space-between; align-items: flex-start;
+        padding: 10px 12px; pointer-events: none; z-index: 5;
+      }
+      .hud.on { display: flex; }
+      .levelbox {
+        background: rgba(10,30,40,.35); color: #fff; border-radius: 12px;
+        padding: 5px 12px; font-weight: 800; font-size: 13px; line-height: 1.25;
+      }
+      .levelbox .big { font-family: "Baloo 2", sans-serif; font-size: 22px; }
+      .levelbox .spd { color: #ffd93b; }
+      .levelbox .jdots { color: #ffd93b; letter-spacing: 2px; }
+      .scorebox {
+        background: rgba(10,30,40,.35); color: #fff; border-radius: 12px;
+        padding: 5px 12px; text-align: right; font-weight: 800; font-size: 13px; line-height: 1.25;
+      }
+      .scorebox .big { font-family: "Baloo 2", sans-serif; font-size: 22px; }
+
+      /* ---------- mouth state pill ---------- */
+      .mouthbar {
+        position: absolute; left: 12px; bottom: 12px; z-index: 5;
+        display: none; flex-direction: column; gap: 6px; max-width: 62%;
+      }
+      .mouthbar.on { display: flex; }
+      .mouth-states { display: flex; gap: 6px; }
+      .mstate {
+        background: rgba(10,30,40,.45); color: #d9eef7; border: 2px solid transparent;
+        border-radius: 999px; padding: 5px 12px; font-weight: 800; font-size: 13px;
+        display: inline-flex; align-items: center; gap: 6px; transition: all .12s;
+      }
+      .mstate .dot { width: 9px; height: 9px; border-radius: 50%; background: #9db9c7; }
+      .mstate.active { background: #fff; color: #17323f; border-color: var(--amber); transform: scale(1.06); }
+      .mstate.active .dot { background: var(--accent); }
+      .mouth-hint {
+        background: rgba(10,30,40,.55); color: #fff; border-radius: 10px;
+        padding: 6px 12px; font-weight: 800; font-size: 14px; display: none; width: fit-content;
+      }
+      .mouth-hint.on { display: block; }
+      .mouth-hint.warn { background: rgba(180,40,50,.75); }
+
+      /* ---------- notifikasi status mulut (besar, tengah atas) ---------- */
+      .mouthnotif {
+        position: absolute; top: 58px; left: 50%; transform: translateX(-50%);
+        z-index: 6; display: none; align-items: center; gap: 8px; pointer-events: none;
+        font-family: "Baloo 2", sans-serif; font-size: clamp(16px, 3.2vw, 23px); line-height: 1.15;
+        padding: 8px 22px; border-radius: 999px; white-space: nowrap;
+        background: rgba(10,30,40,.55); color: #fff;
+        box-shadow: 0 4px 14px rgba(0,0,0,.25); transition: background .12s, color .12s;
+      }
+      .mouthnotif.on { display: inline-flex; }
+      .mouthnotif .ndot { width: 11px; height: 11px; border-radius: 50%; background: #9db9c7; flex: none; }
+      .mouthnotif.pout { background: #4aa3d8; color: #fff; }
+      .mouthnotif.pout .ndot { background: #fff; }
+      .mouthnotif.noface { background: rgba(180,40,50,.85); color: #fff; }
+      .mouthnotif.noface .ndot { background: #fff; }
+
+      /* ---------- camera PiP (lingkaran kecil di dalam game) ---------- */
+      .pip {
+        position: absolute; right: 12px; bottom: 12px; z-index: 4;
+        width: 19%; min-width: 84px; max-width: 148px; aspect-ratio: 1 / 1;
+        border-radius: 50%; overflow: hidden; border: 3.5px solid rgba(255,255,255,.9);
+        box-shadow: 0 6px 18px rgba(0,0,0,.3); display: none; background: #000;
+        transition: border-color .12s;
+      }
+      .pip.on { display: block; }
+      .pip.st-pout { border-color: #4aa3d8; }
+      .pip video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+
+      /* ---------- overlays ---------- */
+      .overlay {
+        position: absolute; inset: 0; z-index: 10; display: none;
+        padding: 14px 16px; background: var(--overlay-bg); overflow-y: auto;
+      }
+      .overlay.on { display: block; }
+      #ovCount.on { display: flex; align-items: center; justify-content: center; }
+      .panel { width: 100%; max-width: 620px; text-align: center; margin: 0 auto; padding: 4px 0 10px; }
+      .panel h2 { font-size: clamp(23px, 4vw, 32px); line-height: 1.1; margin-bottom: 6px; }
+      .panel .sub { color: var(--muted); font-weight: 700; font-size: clamp(14px, 2.4vw, 16.5px); line-height: 1.45; }
+      .howto {
+        display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin: 10px 0 2px;
+      }
+      .how {
+        background: var(--surface2); border: 1.5px solid var(--line); border-radius: 14px;
+        padding: 8px 10px; width: 172px; text-align: center;
+      }
+      .how svg { width: 40px; height: 25px; }
+      .how b { display: block; font-family: "Baloo 2", sans-serif; font-size: 15px; margin-top: 2px; }
+      .how span { font-size: 12px; color: var(--muted); font-weight: 700; line-height: 1.35; display: block; }
+
+      .stevebox { display: flex; justify-content: center; margin: 8px 0 2px; }
+      .stevecard {
+        background: var(--surface); border: 3px solid var(--accent); border-radius: 18px;
+        padding: 10px 22px 8px; box-shadow: 0 8px 20px rgba(31,157,102,.18);
+      }
+      .stevecard svg { width: 74px; height: 92px; }
+      .stevecard b { display: block; font-family: "Baloo 2", sans-serif; font-size: 17px; margin-top: 1px; }
+
+      .btn {
+        font-family: "Baloo 2", sans-serif; font-size: 18px; font-weight: 700;
+        border: none; cursor: pointer; border-radius: 999px; padding: 11px 26px;
+        background: var(--accent); color: #fff; box-shadow: 0 6px 0 var(--accent-dark);
+        transition: transform .08s, box-shadow .08s; margin-top: 10px;
+      }
+      .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--accent-dark); }
+      .btn.coral { background: var(--coral); box-shadow: 0 6px 0 #d34d2e; }
+      .btn.coral:active { box-shadow: 0 2px 0 #d34d2e; }
+      .btn.ghost {
+        background: transparent; color: var(--ink); border: 2.5px solid var(--line);
+        box-shadow: none; font-size: 15.5px; padding: 10px 20px;
+      }
+      .btnrow { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+      .err {
+        display: none; background: #fdecec; color: #8f1d28; border: 1.5px solid #f3b7bc;
+        border-radius: 12px; padding: 10px 14px; font-weight: 700; font-size: 14px; margin-top: 12px; line-height: 1.4;
+      }
+      @media (prefers-color-scheme: dark) { .err { background: #3d1620; color: #ffb3ba; border-color: #6e2a35; } }
+      .err.on { display: block; }
+
+      /* ---------- calibration ---------- */
+      .calib-video {
+        width: min(300px, 72%); aspect-ratio: 4 / 3; margin: 4px auto 10px;
+        border-radius: 16px; overflow: hidden; border: 3px solid var(--line); background: #000;
+      }
+      .calib-video video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+      .calib-icon svg { width: 84px; height: 56px; }
+      .steps { display: flex; gap: 6px; justify-content: center; margin-bottom: 10px; }
+      .steps i { width: 34px; height: 7px; border-radius: 99px; background: var(--line); display: block; }
+      .steps i.done { background: var(--accent); }
+      .steps i.now { background: var(--amber); }
+      .pbar { height: 16px; background: var(--surface2); border: 1.5px solid var(--line); border-radius: 99px; overflow: hidden; max-width: 420px; margin: 12px auto 4px; }
+      .pbar > div { height: 100%; width: 0%; background: var(--accent); border-radius: 99px; transition: width .15s; }
+      .meters { max-width: 420px; margin: 10px auto 0; text-align: left; }
+      .meter { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; color: var(--muted); margin-top: 5px; }
+      .meter .track { flex: 1; height: 9px; background: var(--surface2); border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
+      .meter .fill { height: 100%; width: 0%; background: var(--amber); }
+      .meter .fill.b { background: #4aa3d8; }
+
+      /* ---------- kalibrasi suara ---------- */
+      .vrow {
+        display: flex; align-items: center; gap: 10px; max-width: 460px; margin: 8px auto;
+        background: var(--surface2); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 14px;
+        text-align: left;
+      }
+      .vrow .vlab { flex: 1; font-family: "Baloo 2", sans-serif; font-size: 17px; }
+      .vrow .vlab span { display: block; font-family: "Nunito", sans-serif; font-size: 12.5px; color: var(--muted); font-weight: 700; }
+      .vrow .vstat { font-size: 12.5px; font-weight: 800; color: var(--muted); white-space: nowrap; }
+      .vrow .vstat.ok { color: var(--accent-dark); }
+      .btn.small { font-size: 15px; padding: 8px 18px; margin-top: 0; }
+      .btn[disabled] { opacity: .45; pointer-events: none; }
+
+      .countnum {
+        font-family: "Baloo 2", sans-serif; font-size: clamp(70px, 16vw, 130px);
+        color: #fff; text-shadow: 0 6px 0 rgba(0,0,0,.25); line-height: 1;
+      }
+      #ovCount { background: rgba(8, 25, 35, .45); }
+      .finalscore { font-family: "Baloo 2", sans-serif; font-size: clamp(40px, 8vw, 64px); color: var(--accent-dark); line-height: 1; }
+      .newbest {
+        display: none; background: var(--amber); color: #17323f; font-family: "Baloo 2", sans-serif;
+        border-radius: 999px; padding: 5px 16px; font-size: 16px; margin: 8px auto 0; width: fit-content;
+        animation: pulse .45s infinite alternate;
+      }
+      @keyframes pulse { from { transform: scale(1); } to { transform: scale(1.09); } }
+      .newbest.on { display: block; }
+
+      /* ---------- fallback controls ---------- */
+      .controls { display: none; gap: 12px; margin-top: 14px; }
+      .controls.on { display: flex; }
+      .cbtn {
+        flex: 1; font-family: "Baloo 2", sans-serif; font-size: 21px; font-weight: 700;
+        border-radius: 16px; padding: 18px 10px; cursor: pointer; color: #fff; border: none;
+        display: flex; align-items: center; justify-content: center; gap: 9px;
+        background: var(--coral); box-shadow: 0 5px 0 #d34d2e;
+      }
+      .cbtn svg { width: 26px; height: 26px; }
+      .cbtn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+
+      .tips {
+        margin-top: 16px; background: var(--surface); border: 1.5px solid var(--line);
+        border-radius: 16px; padding: 14px 18px; box-shadow: 0 2px 8px rgba(23,50,63,.06);
+      }
+      .tips h3 { font-size: 16.5px; margin-bottom: 6px; }
+      .tips ul { margin: 0; padding-left: 20px; color: var(--muted); font-weight: 700; font-size: 14px; line-height: 1.55; }
+      @media (max-width: 680px) {
+        /* di HP overlay jadi blok biasa di bawah canvas (mengalir dalam halaman),
+           jadi semua isi menu/kalibrasi terjangkau tanpa tumpang-tindih */
+        .stage { aspect-ratio: auto; }
+        canvas#game { aspect-ratio: 16 / 9; height: auto; }
+        .overlay { position: relative; inset: auto; padding: 16px 12px 22px; }
+        .how { width: 47%; padding: 8px 8px; }
+      }
+      @media (max-width: 560px) {
+        body { padding: 10px 8px 24px; }
+        .how { width: 46%; }
+        .mouthbar { max-width: 70%; }
+        .mstate { font-size: 11.5px; padding: 4px 9px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="topbar">
+        <span class="chip" id="bestChip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ffb703" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v6a5 5 0 0 1-10 0V4z" fill="#ffb703" stroke="none"/><path d="M7 6H4a2 2 0 0 0 0 4h3M17 6h3a2 2 0 0 1 0 4h-3" /></svg>
+          Skor Tertinggi <span class="num" id="bestNum">0</span>
+        </span>
+        <span class="chip cam-off" id="camChip">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          <span id="camChipTxt">Kamera belum aktif</span>
+        </span>
+      </div>
+
+      <div class="stage" id="stage">
+        <canvas id="game" width="960" height="540"></canvas>
+
+        <div class="hud" id="hud">
+          <div class="levelbox">LEVEL <span class="big" id="levelNum">1</span><br />Tema <span id="themeNum">Tsunami Aceh</span><br />Kecepatan <span class="spd" id="speedNum">×1.0</span> · Jarak <span id="distNum">0m</span><br />Lompat <span class="jdots" id="jumpDots">●●</span></div>
+          <div class="scorebox">SKOR<br /><span class="big" id="scoreNum">0</span></div>
+        </div>
+
+        <div class="mouthbar" id="mouthbar">
+          <div class="mouth-states">
+            <span class="mstate" id="msNeutral"><span class="dot"></span>Tertutup</span>
+            <span class="mstate" id="msPout"><span class="dot"></span>Monyong</span>
+            <span class="mstate" id="msVoice" style="display:none"><span class="dot"></span><span id="msVoiceTxt">Mikrofon…</span></span>
+          </div>
+          <div class="mouth-hint" id="mouthHint"></div>
+        </div>
+
+        <div class="mouthnotif" id="mouthNotif"><span class="ndot"></span><span id="mouthNotifTxt">Mulut tertutup</span></div>
+
+        <div class="pip" id="pip"></div>
+
+        <!-- MENU -->
+        <div class="overlay on" id="ovMenu">
+          <div class="panel">
+            <h2>Bucungs</h2>
+            <div class="stevebox">
+              <div class="stevecard">
+                <svg viewBox="0 0 80 96">
+                  <rect x="27" y="4" width="26" height="24" fill="#c68e5e"/>
+                  <rect x="27" y="4" width="26" height="7" fill="#a3a3a3"/>
+                  <rect x="25" y="4" width="2" height="14" fill="#a3a3a3"/>
+                  <rect x="53" y="4" width="2" height="14" fill="#a3a3a3"/>
+                  <rect x="32" y="16" width="5" height="4" fill="#fff"/><rect x="34" y="16" width="3" height="4" fill="#3b2d8f"/>
+                  <rect x="43" y="16" width="5" height="4" fill="#fff"/><rect x="43" y="16" width="3" height="4" fill="#3b2d8f"/>
+                  <rect x="37" y="20" width="6" height="2" fill="#a06a3c"/>
+                  <rect x="35" y="24" width="10" height="2.6" fill="#7a4a26"/>
+                  <rect x="26" y="28" width="28" height="30" fill="#d2ab6b"/>
+                  <rect x="26" y="28" width="28" height="3.5" fill="#b78f4e"/>
+                  <rect x="39.2" y="31.5" width="1.6" height="26.5" fill="#b78f4e"/>
+                  <rect x="28.5" y="35" width="9" height="7" fill="#b78f4e"/>
+                  <rect x="42.5" y="35" width="9" height="7" fill="#b78f4e"/>
+                  <rect x="18" y="28" width="7" height="26" fill="#c68e5e"/>
+                  <rect x="55" y="28" width="7" height="26" fill="#c68e5e"/>
+                  <rect x="18" y="28" width="7" height="8" fill="#b78f4e"/>
+                  <rect x="55" y="28" width="7" height="8" fill="#b78f4e"/>
+                  <rect x="27" y="58" width="12" height="26" fill="#8f7a4e"/>
+                  <rect x="41" y="58" width="12" height="26" fill="#7d6a42"/>
+                  <rect x="26" y="84" width="14" height="6" fill="#4a3626"/>
+                  <rect x="40" y="84" width="14" height="6" fill="#3c2c1e"/>
+                </svg>
+                <b>Wowo</b>
+              </div>
+            </div>
+            <div class="btnrow">
+              <button class="btn" id="btnStart" type="button">Mulai Kalibrasi</button>
+              <button class="btn ghost" id="btnVoice" type="button">Main Pakai Suara &ldquo;Nye&rdquo;</button>
+              <button class="btn ghost" id="btnButtons" type="button">Main Pakai Tombol</button>
+            </div>
+            <div class="err" id="menuErr"></div>
+          </div>
+        </div>
+
+        <!-- CALIBRATION -->
+        <div class="overlay" id="ovCalib">
+          <div class="panel">
+            <div class="steps"><i id="st0"></i></div>
+            <div class="calib-video" id="calibVideoSlot"></div>
+            <div class="calib-icon" id="calibIcon"></div>
+            <h2 id="calibTitle" style="font-size:clamp(21px,3.6vw,28px);">Kalibrasi</h2>
+            <p class="sub" id="calibText"></p>
+            <div class="pbar"><div id="calibProg"></div></div>
+            <p class="sub" id="calibStatus" style="font-size:13.5px;">Monyong dan tahan agak lama…</p>
+            <div class="meters">
+              <div class="meter">Bukaan mulut <div class="track"><div class="fill" id="meterMar"></div></div></div>
+              <div class="meter">Lebar mulut <div class="track"><div class="fill b" id="meterWr"></div></div></div>
+            </div>
+            <div class="btnrow">
+              <button class="btn ghost" id="btnCalibSnap" type="button">Ambil Contoh Ini</button>
+              <button class="btn ghost" id="btnCalibSkip" type="button">Lewati Kalibrasi</button>
+            </div>
+            <div class="err" id="calibErr"></div>
+          </div>
+        </div>
+
+        <!-- KALIBRASI SUARA -->
+        <div class="overlay" id="ovVoice">
+          <div class="panel">
+            <h2 style="font-size:clamp(21px,3.6vw,28px);">Kalibrasi Suara</h2>
+            <p class="sub" id="voiceStatus">Rekam dulu contoh &ldquo;nye&rdquo;-mu.</p>
+            <div class="vrow">
+              <div class="vlab">&ldquo;Nye&rdquo;<span>tiap &ldquo;nye&rdquo; = 1 lompat</span></div>
+              <span class="vstat" id="vstat1">Belum direkam</span>
+              <button class="btn small" id="btnRec1" type="button">Rekam</button>
+            </div>
+            <div class="meters">
+              <div class="meter">Mikrofon <div class="track"><div class="fill" id="voiceMeterFill"></div></div></div>
+            </div>
+            <div class="btnrow">
+              <button class="btn" id="btnVoicePlay" type="button" disabled>Mulai Main</button>
+              <button class="btn ghost" id="btnVoiceBack" type="button">Kembali</button>
+            </div>
+            <div class="err" id="voiceErr"></div>
+          </div>
+        </div>
+
+        <!-- COUNTDOWN -->
+        <div class="overlay" id="ovCount">
+          <div class="countnum" id="countNum">3</div>
+        </div>
+
+        <!-- GAME OVER -->
+        <div class="overlay" id="ovOver">
+          <div class="panel">
+            <h2>Wowo Jatuh ke Jurang!</h2>
+            <p class="sub">Skor kamu</p>
+            <div class="finalscore" id="finalScore">0</div>
+            <div class="newbest" id="newBest">Rekor Baru!</div>
+            <p class="sub" style="margin-top:8px;">Level <b id="finalLevel">1</b> · Jarak <b id="finalDist">0m</b> · Skor tertinggi: <b id="finalBest">0</b></p>
+            <div class="btnrow">
+              <button class="btn coral" id="btnAgain" type="button">Main Lagi</button>
+              <button class="btn ghost" id="btnRecalib" type="button">Kalibrasi Ulang</button>
+              <button class="btn ghost" id="btnMenu" type="button">Menu Utama</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls" id="controls">
+        <button class="cbtn" id="btnJump" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V7M5 13l7-7 7 7"/></svg>
+          LOMPAT
+        </button>
+      </div>
+
+    </div>
+
+    <video id="cam" playsinline muted style="display:none"></video>
+
+    <script>
+      "use strict";
+      /* ============================================================
+         BUCUNGS — Wowo lari ke kanan. Tiga mode kontrol:
+         kamera (monyong = lompat), SUARA (kalibrasi rekaman:
+         cukup satu contoh "nye"; pas main tiap "nye" yang
+         terdengar = 1 lompat, dihitung per suku kata via
+         Web Audio API), dan tombol/keyboard.
+         - Steve LARI SENDIRI ke kanan di atas deretan pijakan;
+           di antara pijakan ada JURANG. Tinggi pijakan NAIK TERUS
+           (tidak pernah turun). Sesekali ada TANJAKAN SANGAT TINGGI
+           bertanda panah kuning ganda yang WAJIB dilompati 2x —
+           sekali lompat (maks ~158px) tidak akan sampai.
+         - TEMA tempat berganti tiap 3 level dan berputar terus:
+           Tsunami Aceh -> Kebakaran Kalimantan -> Gempa NTT.
+           Langit, jenis pijakan, dan bahaya di dasar layar
+           (air laut / api / reruntuhan) mengikuti tema aktif.
+         - MONYONG (manyun) = LOMPAT, terpicu langsung saat monyong
+           terdeteksi (tanpa menunggu mulut tertutup). Menahan pose
+           monyong tidak mengulang lompatan (latch) — lepas pose
+           dulu, baru bisa monyong lagi.
+         - Lompat MAKSIMAL 2x sebelum mendarat: lompat pertama dari
+           pijakan, lompat kedua di udara (double jump).
+         - TIDAK ADA HP: jatuh ke jurang = langsung game over.
+         - Kecepatan lari naik terus seiring waktu & level; jurang
+           makin lebar dan pijakan makin tinggi -> makin sulit.
+         - Skor mengalir sebanding KECEPATAN + bonus per jurang
+           yang berhasil dilewati.
+         ============================================================ */
+      const $ = (id) => document.getElementById(id);
+      const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+      const rand = (a, b) => a + Math.random() * (b - a);
+
+      const S = {
+        screen: "menu",          // menu | calib | voice | count | play | over
+        mode: "camera",          // camera | voice | buttons
+        best: 0,
+        camStarted: false,
+        camFailed: false,
+        th: { poutEnter: 0.33, poutExit: 0.348 },
+        mouth: { face: false, mar: 0, wr: 0.4, prevWr: null, poutLatch: false, display: "neutral" },
+      };
+
+      /* ---------------- audio (synth kecil) ---------------- */
+      let AC = null;
+      function ac() {
+        if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+        if (AC && AC.state === "suspended") AC.resume();
+        return AC;
+      }
+      function beep(f0, f1, dur, type, vol) {
+        const c = ac(); if (!c) return;
+        const o = c.createOscillator(), g = c.createGain();
+        o.type = type || "sine";
+        o.frequency.setValueAtTime(f0, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(Math.max(f1, 1), c.currentTime + dur);
+        g.gain.setValueAtTime(vol || 0.12, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + dur);
+      }
+      const sfx = {
+        jump: () => beep(320, 760, 0.16, "sine", 0.13),
+        land: () => beep(240, 180, 0.07, "triangle", 0.07),
+        level:() => { beep(660, 660, 0.09, "square", 0.07); setTimeout(() => beep(880, 880, 0.12, "square", 0.07), 90); },
+        count:() => beep(440, 440, 0.09, "square", 0.06),
+        go:   () => beep(660, 990, 0.22, "square", 0.08),
+        over: () => { beep(392, 392, 0.16, "triangle", 0.11); setTimeout(() => beep(330, 330, 0.16, "triangle", 0.11), 170); setTimeout(() => beep(262, 130, 0.36, "triangle", 0.11), 340); },
+      };
+
+      /* ---------------- kamera + deteksi wajah ---------------- */
+      const video = $("cam");
+      let faceMesh = null, mpCamera = null, sending = false;
+
+      function setCamChip(txt, on) {
+        $("camChipTxt").textContent = txt;
+        $("camChip").classList.toggle("cam-off", !on);
+      }
+      function moveVideo(slot) { slot.appendChild(video); video.style.display = "block"; }
+      function waitLib(ms) {
+        return new Promise((res) => {
+          let done = false;
+          const finish = (v) => { if (!done) { done = true; clearInterval(iv); clearTimeout(to); res(v); } };
+          if (window.FaceMesh && window.Camera) return res(true);
+          const iv = setInterval(() => { if (window.FaceMesh && window.Camera) finish(true); }, 120);
+          const to = setTimeout(() => finish(!!(window.FaceMesh && window.Camera)), ms);
+        });
+      }
+
+      async function startCamera() {
+        if (S.camStarted) return true;
+        const okLib = await waitLib(6000);
+        if (!okLib) { S.camFailed = true; return false; }
+        try {
+          faceMesh = new FaceMesh({ locateFile: (f) => "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/" + f });
+          faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+          faceMesh.onResults(onFaceResults);
+          mpCamera = new Camera(video, {
+            onFrame: async () => {
+              // Anti-lambat: frame yang masih antre dibuang, jangan sampai
+              // deteksi tertinggal dari gerakan mulut asli.
+              if (sending) return;
+              sending = true;
+              try { await faceMesh.send({ image: video }); } catch (e) {}
+              sending = false;
+            },
+            width: 320, height: 240, // resolusi ringan = inferensi jauh lebih cepat = respons lebih gesit
+          });
+          await mpCamera.start();
+          S.camStarted = true;
+          setCamChip("Kamera aktif", true);
+          return true;
+        } catch (e) {
+          S.camFailed = true;
+          setCamChip("Kamera tidak bisa dipakai", false);
+          return false;
+        }
+      }
+
+      const ASPECT = 640 / 480;
+      function onFaceResults(res) {
+        const lm = res && res.multiFaceLandmarks && res.multiFaceLandmarks[0];
+        if (!lm) { S.mouth.face = false; S.mouth.prevWr = null; refreshMouthUI(); return; }
+        S.mouth.face = true;
+        const d = (a, b) => Math.hypot((lm[a].x - lm[b].x) * ASPECT, lm[a].y - lm[b].y);
+        const mw = d(61, 291), mh = d(13, 14), fw = d(234, 454);
+        if (mw > 0.001 && fw > 0.001) {
+          S.mouth.mar = mh / mw;          // rasio bukaan mulut
+          S.mouth.wr = mw / fw;           // rasio lebar mulut (mengecil saat monyong)
+        }
+        if (S.screen === "calib") calibSample();
+        if ((S.screen === "play" || S.screen === "count") && S.mode === "camera") mouthFSM();
+        refreshMouthUI();
+      }
+
+      /* -------- state machine input mulut --------
+         Cuma satu aksi: MONYONG -> LOMPAT, langsung saat terdeteksi.
+         Latch mencegah pengulangan selama pose ditahan; latch lepas
+         saat bibir kembali normal, jadi monyong berikutnya bisa
+         lompat lagi. Mulut yang terbuka lebar (mangap) tidak dihitung
+         monyong supaya tidak salah picu.                        */
+      function mouthFSM() {
+        const m = S.mouth, th = S.th;
+        if (!m.face) { m.display = m.poutLatch ? "pout" : "neutral"; return; }
+        // Picu LEBIH AWAL demi respons: kalau lebar mulut sedang menyempit
+        // cepat dan sudah masuk zona monyong (<= ambang lepas), langsung
+        // dianggap monyong — tidak perlu menunggu monyong benar-benar penuh.
+        const dropping = m.prevWr !== null && (m.prevWr - m.wr) >= 0.012;
+        const nearPout = m.wr <= th.poutEnter || (dropping && m.wr <= th.poutExit);
+        const isPout = nearPout && m.mar < 0.34;
+        if (isPout && !m.poutLatch) { m.poutLatch = true; fireJump(); }
+        // Latch HANYA lepas pada frame yang bukan monyong dan bibir sudah
+        // kembali melebar — jadi satu monyong tidak pernah memicu dua kali,
+        // tapi relaksasi kecil saja sudah cukup untuk monyong berikutnya.
+        else if (!isPout && m.wr >= th.poutExit) m.poutLatch = false;
+        m.display = (m.wr <= th.poutExit && m.mar < 0.34) ? "pout" : "neutral";
+        m.prevWr = m.wr;
+      }
+
+      /* ---------------- mode SUARA: satu contoh "nye" + hitung per suku kata ----------------
+         Pengenalan suara bawaan browser ternyata tidak andal
+         menangkap kata "nye", dan pencocokan contoh utuh
+         ("nyenye" vs "nyenyenye") juga lambat: harus menunggu
+         ucapan selesai dulu baru memutuskan, dan ambang
+         kecocokannya sering menolak. Sekarang jauh lebih
+         sederhana & responsif: pengguna cukup MEREKAM SATU
+         contoh "nye". Contoh itu dipakai untuk mengenal CIRI
+         suara "nye" (profil pita frekuensi + kerasnya). Selama
+         main, tiap LEDAKAN suku kata yang ciri spektrumnya
+         mirip "nye" LANGSUNG memicu 1 lompat — tanpa menunggu
+         ucapan selesai. Jadi "nye", "nye nye", "nye nye nye"
+         semuanya dihitung sama: tiap "nye" = 1 lompat (lompat
+         kedua di udara otomatis jadi double jump lewat
+         fireJump). Contoh hanya disimpan di memori selama
+         halaman dibuka.                        */
+      let lastVoiceAt = 0;  // kapan "nye" terakhir terdeteksi
+      const V = {
+        stream: null, vctx: null, src: null, analyser: null,
+        td: null, fd: null, lastFrameAt: 0,
+        floor: 0.006,                 // perkiraan noise lantai (RMS)
+        playing: false,               // pencocokan live aktif (saat main)
+        templates: { nye: null },     // { bands, peak, dur } dari contoh "nye"
+        enroll: null,                 // { state, frames, startAt, waitStart, lastLoud }
+        seg: null,                    // segmen suara live yang sedang dilacak (lihat liveTick)
+      };
+      const VBANDS = [[300, 700], [700, 1200], [1200, 2000], [2000, 3200], [3200, 5000], [5000, 8000]];
+
+      function voiceThr() { return clamp(V.floor * 3, 0.016, 0.08); }
+
+      // Satu frame fitur dari mikrofon: keras suara (RMS), tingkat
+      // zero-crossing, pusat spektrum, dan energi 6 pita frekuensi
+      // (sudah dinormalisasi terhadap total energi spektrum).
+      function voiceFrame(now) {
+        const an = V.analyser; if (!an) return null;
+        an.getFloatTimeDomainData(V.td);
+        let sum = 0, zc = 0, prev = 0;
+        for (let i = 0; i < V.td.length; i++) {
+          const x = V.td[i];
+          sum += x * x;
+          if (i > 0 && (x >= 0) !== (prev >= 0)) zc++;
+          prev = x;
+        }
+        const rms = Math.sqrt(sum / V.td.length);
+        an.getFloatFrequencyData(V.fd);
+        const binHz = (V.vctx.sampleRate / 2) / V.fd.length;
+        const bands = [0, 0, 0, 0, 0, 0];
+        let tot = 0, cw = 0;
+        for (let i = 1; i < V.fd.length; i++) {
+          const db = V.fd[i];
+          if (!isFinite(db)) continue;
+          const mag = Math.pow(10, db / 20);
+          const fq = i * binHz;
+          tot += mag; cw += fq * mag;
+          for ( let b = 0; b < 6; b++) if (fq >= VBANDS[b][0] && fq < VBANDS[b][1]) { bands[b] += mag; break; }
+        }
+        if (tot > 0) for (let b = 0; b < 6; b++) bands[b] /= tot;
+        return {
+          t: now, rms: rms,
+          z: zc / V.td.length,
+          c: clamp((tot > 0 ? cw / tot : 0) / 8000, 0, 1),
+          b: bands,
+        };
+      }
+
+      // Profil pita frekuensi rata-rata dari frame-frame yang
+      // keras (inti suku kata saja, bukan hening di tepinya),
+      // plus keras suara puncaknya.
+      function bandProfile(frames, thr) {
+        const acc = [0, 0, 0, 0, 0, 0];
+        let n = 0, peak = 0;
+        for (const f of frames) {
+          if (f.rms > peak) peak = f.rms;
+          if (f.rms < thr) continue;
+          for (let b = 0; b < 6; b++) acc[b] += f.b[b];
+          n++;
+        }
+        if (!n) return null;
+        for (let b = 0; b < 6; b++) acc[b] /= n;
+        return { bands: acc, peak: peak };
+      }
+      function bandDist(a, b) {
+        let s = 0;
+        for (let i = 0; i < 6; i++) s += Math.abs(a[i] - b[i]);
+        return s;
+      }
+      // Apakah ledakan suara ini mirip contoh "nye"? Ambang 0,5
+      // dipilih dari simulasi: "nye" dengan variasi besar tetap
+      // lolos, sedangkan dengung rendah & tepukan broadband
+      // tertolak — cukup ketat untuk menyaring noise, cukup
+      // longgar supaya tidak mengulang penyakit versi lama
+      // (ucapan asli ditolak terus).
+      function matchesNye(frames) {
+        const t = V.templates.nye;
+        if (!t || frames.length < 3) return false;
+        const p = bandProfile(frames, voiceThr() * 0.9);
+        if (!p) return false;
+        return bandDist(p.bands, t.bands) < 0.5;
+      }
+      // Pangkas frame hening di awal/akhir segmen rekaman.
+      function trimFrames(frames, thr) {
+        let a = 0, b = frames.length - 1;
+        while (a < frames.length && frames[a].rms < thr) a++;
+        while (b > a && frames[b].rms < thr) b--;
+        a = Math.max(0, a - 1); b = Math.min(frames.length - 1, b + 2);
+        return frames.slice(a, b + 1);
+      }
+      function segDur(frames) { return frames.length > 1 ? frames[frames.length - 1].t - frames[0].t : 0; }
+
+      async function ensureMic() {
+        if (V.stream && V.stream.active && V.analyser) return true;
+        try {
+          const ACtx = window.AudioContext || window.webkitAudioContext;
+          if (!ACtx || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return false;
+          if (!V.vctx) V.vctx = new ACtx();
+          if (V.vctx.state === "suspended") { try { await V.vctx.resume(); } catch (e) {} }
+          V.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+          if (V.src) { try { V.src.disconnect(); } catch (e) {} }
+          V.src = V.vctx.createMediaStreamSource(V.stream);
+          V.analyser = V.vctx.createAnalyser();
+          V.analyser.fftSize = 1024;
+          V.analyser.smoothingTimeConstant = 0;
+          V.src.connect(V.analyser);
+          V.td = new Float32Array(V.analyser.fftSize);
+          V.fd = new Float32Array(V.analyser.frequencyBinCount);
+          return true;
+        } catch (e) { return false; }
+      }
+      function releaseMic() {
+        V.playing = false; V.enroll = null; V.seg = null;
+        if (V.stream) { V.stream.getTracks().forEach((t) => t.stop()); V.stream = null; }
+        if (V.src) { try { V.src.disconnect(); } catch (e) {} V.src = null; }
+        V.analyser = null;
+      }
+      function startVoice() {
+        V.playing = true; V.seg = null;
+        ensureMic();
+      }
+      function stopVoice() { releaseMic(); }
+
+      // Pompa analisis audio: dipanggil dari loop utama, dibatasi
+      // satu frame fitur tiap ~14ms.
+      function voiceTick(now) {
+        if (!V.analyser) return;
+        if (now - V.lastFrameAt < 14) return;
+        V.lastFrameAt = now;
+        const f = voiceFrame(now); if (!f) return;
+        const thr = voiceThr();
+        if (f.rms < thr) V.floor = V.floor * 0.96 + f.rms * 0.04; // lantai noise adaptif
+        if (S.screen === "voice") {
+          $("voiceMeterFill").style.width = clamp(f.rms / 0.25 * 100, 0, 100) + "%";
+          enrollTick(f, now, thr);
+        } else if (V.playing && (S.screen === "play" || S.screen === "count")) {
+          liveTick(f, now, thr);
+        }
+      }
+
+      /* ----- kalibrasi suara: rekam contoh ----- */
+      function startEnroll() {
+        if (V.enroll) return;
+        if (!V.analyser) {
+          const e = $("voiceErr");
+          e.textContent = "Mikrofon belum aktif. Tunggu sebentar atau izinkan akses mikrofon.";
+          e.classList.add("on");
+          return;
+        }
+        V.enroll = { state: "wait", frames: [], waitStart: performance.now(), startAt: 0, lastLoud: 0 };
+        $("voiceStatus").textContent = "Ucapkan “nye” sekarang…";
+        refreshEnrollUI();
+      }
+      function enrollTick(f, now, thr) {
+        const en = V.enroll; if (!en) return;
+        if (en.state === "wait") {
+          if (f.rms > thr) { en.state = "rec"; en.frames = [f]; en.startAt = now; en.lastLoud = now; refreshEnrollUI(); }
+          else if (now - en.waitStart > 5000) {
+            V.enroll = null;
+            $("voiceStatus").textContent = "Tidak terdengar. Coba lagi, lebih dekat ke mikrofon.";
+            refreshEnrollUI();
+          }
+          return;
+        }
+        en.frames.push(f);
+        if (f.rms > thr * 0.8) en.lastLoud = now;
+        const dur = now - en.startAt;
+        if ((now - en.lastLoud > 280 && dur > 300) || dur > 2600) finishEnroll();
+      }
+      function finishEnroll() {
+        const en = V.enroll; V.enroll = null;
+        const frames = trimFrames(en.frames, voiceThr() * 0.8);
+        const dur = segDur(frames);
+        const prof = bandProfile(frames, voiceThr());
+        if (frames.length < 6 || dur < 120 || !prof) {
+          $("voiceStatus").textContent = "Terlalu pendek. Coba rekam lagi.";
+          refreshEnrollUI();
+          return;
+        }
+        V.templates.nye = { bands: prof.bands, peak: prof.peak, dur: dur };
+        beep(700, 900, 0.1, "triangle", 0.1);
+        $("voiceStatus").textContent = "Contoh “nye” terekam. Pas main, tiap “nye” = 1 lompat.";
+        refreshEnrollUI();
+      }
+      function refreshEnrollUI() {
+        const ok = !!V.templates.nye;
+        const busy = !!V.enroll;
+        $("vstat1").textContent = busy ? "Merekam…" : (ok ? "Sudah direkam ✓" : "Belum direkam");
+        $("vstat1").classList.toggle("ok", ok && !busy);
+        $("btnRec1").textContent = ok ? "Rekam Ulang" : "Rekam";
+        $("btnRec1").disabled = busy;
+        $("btnVoicePlay").disabled = !ok || busy;
+      }
+      function openVoiceEnroll() {
+        S.screen = "voice";
+        showOverlay("ovVoice");
+        $("voiceErr").classList.remove("on");
+        $("voiceStatus").textContent = V.templates.nye
+          ? "Contoh “nye” sudah ada. Boleh rekam ulang atau langsung main."
+          : "Rekam dulu contoh “nye”-mu.";
+        refreshEnrollUI();
+        ensureMic().then((ok) => {
+          if (!ok) {
+            const e = $("voiceErr");
+            e.textContent = "Mikrofon tidak bisa dipakai. Izinkan akses mikrofon, atau main pakai kamera/tombol.";
+            e.classList.add("on");
+          }
+        });
+      }
+
+      /* ----- deteksi live: tiap "nye" = 1 lompat -----
+         Satu rangkaian suara keras (dari suara melewati ambang
+         sampai hening lagi) dilacak sebagai SATU segmen, dan di
+         dalamnya TIAP ledakan dihitung sendiri-sendiri:
+
+         - Ledakan pertama dipicu cepat seperti sebelumnya:
+           kumpulkan ~5 frame, cek ciri spektrumnya mirip contoh
+           "nye" -> lompat seketika, tanpa menunggu ucapan selesai.
+         - Ledakan berikutnya dikenali dari LEMBAH antar suku
+           kata: level turun jelas dari puncak ledakan ini
+           (ke bawah ~68% puncaknya, minimal 2 frame) lalu NAIK
+           lagi sampai ~78% puncak itu — jadi "nye" kedua yang
+           lebih pelan pun tetap kehitung. Tidak perlu hening total
+           di antaranya — celah sekecil apa pun antara "nye"
+           yang diucapkan cepat tetap terbaca sebagai ledakan
+           baru, dan ciri spektrum ledakan barunya tetap dicek
+           ke contoh sebelum memicu.
+         - Segmen berakhir saat hening; kalau ledakan pertamanya
+           belum sempat memicu (profilnya baru jelas belakangan),
+           seluruh segmen dinilai sekali di akhir.
+
+         Mau "nye" diucapkan sekali, dua kali, atau berkali-kali
+         — cepat maupun rapat — tiap ledakan = 1 lompat. Batas
+         double jump (maksimal 2x sebelum mendarat) tetap urusan
+         fireJump di sisi game; "nye" selebihnya masuk buffer
+         lompatan seperti input lain. */
+      function segMatch(frames, peak) {
+        const bright = frames.filter((g) => g.rms >= Math.max(voiceThr(), peak * 0.55));
+        return matchesNye(bright.length >= 3 ? bright : frames);
+      }
+      function segFire(S, now) {
+        S.fired = true; S.lastFireAt = now;
+        S.burstPeak = S.peak; S.valley = Infinity; S.valleyAt = 0; S.dipFrames = 0;
+        lastVoiceAt = now;
+        fireJump();
+      }
+      function liveTick(f, now, thr) {
+        const S = V.seg;
+        if (!S) {
+          if (f.rms > thr) {
+            V.seg = { frames: [f], peak: f.rms, fired: false, lastFireAt: 0,
+                      burstPeak: f.rms, valley: Infinity, valleyAt: 0, dipFrames: 0, quietSince: 0 };
+          }
+          return;
+        }
+        S.frames.push(f);
+        if (S.frames.length > 400) S.frames.shift();
+        if (f.rms > S.peak) S.peak = f.rms;
+
+        // Ledakan pertama: picu secepat ciri spektrumnya terbaca.
+        if (!S.fired && S.frames.length >= 5 && segMatch(S.frames, S.peak)) segFire(S, now);
+
+        // Ledakan berikutnya di segmen yang sama (kasus double
+        // jump): lacak lembah sesudah puncak ledakan terakhir.
+        if (S.fired) {
+          // Cek "sudah naik lagi" HARUS lebih dulu: frame ledakan
+          // baru bisa saja melampaui puncak ledakan sebelumnya, dan
+          // kalau pembaruan puncak didahulukan, lembahnya ke-reset
+          // sebelum sempat dinilai.
+          if (S.dipFrames >= 2 && f.rms >= S.burstPeak * 0.78 && now - S.lastFireAt >= 110) {
+            const tail = S.frames.filter((g) => g.t >= S.valleyAt);
+            if (segMatch(tail.length >= 3 ? tail : S.frames, S.burstPeak)) segFire(S, now);
+            else { // bukan "nye": ledakan ini terpakai, jangan dinilai berulang
+              S.burstPeak = Math.max(S.burstPeak, f.rms); S.valley = Infinity; S.valleyAt = 0; S.dipFrames = 0; S.lastFireAt = now;
+            }
+          } else if (f.rms > S.burstPeak) { S.burstPeak = f.rms; S.valley = Infinity; S.valleyAt = 0; S.dipFrames = 0; }
+          else {
+            if (f.rms < S.valley) { S.valley = f.rms; S.valleyAt = now; }
+            if (f.rms <= S.burstPeak * 0.68) S.dipFrames++;
+          }
+        }
+
+        // Segmen selesai saat hening beneran.
+        if (f.rms < thr * 0.75) { if (!S.quietSince) S.quietSince = now; } else S.quietSince = 0;
+        if (S.quietSince && now - S.quietSince >= 110) {
+          if (!S.fired && S.frames.length >= 4 && segMatch(S.frames, S.peak)) {
+            lastVoiceAt = now;
+            fireJump();
+          }
+          V.seg = null;
+        }
+      }
+
+      function updateVoiceUI() {
+        if (S.mode !== "voice") return;
+        const inGame = S.screen === "play" || S.screen === "count";
+        const notif = $("mouthNotif"), ntxt = $("mouthNotifTxt");
+        notif.classList.toggle("on", inGame);
+        if (!inGame) return;
+        const recent = performance.now() - lastVoiceAt < 700;
+        ntxt.textContent = recent ? "NYE! LOMPAT" : "“Nye” = LOMPAT";
+        notif.classList.toggle("pout", recent);
+        notif.classList.remove("noface");
+        const pill = $("msVoice");
+        pill.classList.toggle("active", recent);
+        $("msVoiceTxt").textContent = recent ? "Nye! Lompat" : (V.playing && V.analyser ? "Mikrofon aktif" : "Mikrofon menyala…");
+      }
+
+      function refreshMouthUI() {
+        if (S.mode !== "camera") return;
+        const m = S.mouth;
+        $("msNeutral").classList.toggle("active", m.display === "neutral");
+        $("msPout").classList.toggle("active", m.display === "pout");
+        const hint = $("mouthHint");
+        if (!m.face && (S.screen === "play" || S.screen === "count")) {
+          hint.textContent = "Wajah tidak terlihat";
+          hint.classList.add("on"); hint.classList.add("warn");
+        } else {
+          hint.classList.remove("on"); hint.classList.remove("warn");
+        }
+        // notifikasi besar status mulut + ring lingkaran kamera ikut berwarna
+        const notif = $("mouthNotif"), ntxt = $("mouthNotifTxt"), pip = $("pip");
+        const inGame = S.screen === "play" || S.screen === "count";
+        notif.classList.toggle("on", inGame);
+        pip.classList.toggle("st-pout", inGame && m.display === "pout");
+        if (inGame) {
+          let cls = "";
+          if (!m.face) { ntxt.textContent = "Wajah tidak terlihat"; cls = "noface"; }
+          else if (m.display === "pout") { ntxt.textContent = "MONYONG! LOMPAT"; cls = "pout"; }
+          else ntxt.textContent = "Mulut tertutup";
+          notif.classList.toggle("pout", cls === "pout");
+          notif.classList.toggle("noface", cls === "noface");
+        }
+        if (S.screen === "calib") {
+          $("meterMar").style.width = clamp(S.mouth.mar / 0.9 * 100, 0, 100) + "%";
+          $("meterWr").style.width = clamp((S.mouth.wr - 0.18) / (0.5 - 0.18) * 100, 0, 100) + "%";
+        }
+      }
+
+      /* ---------------- kalibrasi (1 langkah saja: monyong) ----------------
+         Cukup SATU monyong, tapi kini dibaca secara RELATIF: selama
+         kalibrasi, lebar mulut TERBESAR yang terlihat dipakai sebagai
+         acuan "bibir biasa" (monyong hanya bisa mengecilkan lebar
+         mulut, tidak membesarkannya), lalu monyong terdeteksi dari
+         PENYEMPITANNYA. Cara lama memakai angka mutlak yang untuk
+         sebagian wajah tidak pernah tercapai — sekarang monyong
+         yang wajar pun terbaca. Kalibrasi sengaja dibuat AGAK LAMA:
+         monyong harus ditahan mantap ~0,9 detik (tidak terlalu
+         singkat, supaya ambangnya terbaca stabil), dan ada batas
+         waktu 15 detik supaya tidak ada yang terjebak: kalibrasi
+         selalu selesai dengan contoh terbaik yang ada.  */
+      const CAL_STEPS = [
+        {
+          key: "pout", title: "Kalibrasi: Monyong Sekali",
+          text: "Monyongkan bibir seperti manyun, lalu tahan agak lama (±1 detik) sampai barnya penuh.",
+          icon: '<svg viewBox="0 0 84 56"><ellipse cx="42" cy="28" rx="11" ry="9.5" fill="#17323f"/><circle cx="38" cy="25" r="2" fill="#fff"/><circle cx="46" cy="25" r="2" fill="#fff"/></svg>',
+        },
+      ];
+      const cal = { step: 0, progress: 0, data: {}, t: 0, lastTs: 0, baseWr: 0, minWr: 1, hold: 0 };
+
+      function startCalib() {
+        cal.step = 0; cal.progress = 0; cal.data = {};
+        S.screen = "calib";
+        showOverlay("ovCalib");
+        moveVideo($("calibVideoSlot"));
+        $("pip").classList.remove("on");
+        $("calibErr").classList.remove("on");
+        renderCalibStep();
+      }
+      function renderCalibStep() {
+        const st = CAL_STEPS[cal.step];
+        $("calibTitle").textContent = st.title;
+        $("calibText").textContent = st.text;
+        $("calibIcon").innerHTML = st.icon;
+        $("calibProg").style.width = "0%";
+        $("calibStatus").textContent = "Monyongkan bibir, tahan agak lama…";
+        for (let i = 0; i < CAL_STEPS.length; i++) {
+          $("st" + i).className = i < cal.step ? "done" : (i === cal.step ? "now" : "");
+        }
+        cal.progress = 0; cal.t = 0; cal.lastTs = 0; cal.baseWr = 0; cal.minWr = 1; cal.hold = 0;
+      }
+      function calibSample() {
+        const m = S.mouth;
+        if (!m.face) { $("calibStatus").textContent = "Wajah belum terlihat."; cal.lastTs = 0; return; }
+        const now = performance.now();
+        const dt = cal.lastTs ? clamp((now - cal.lastTs) / 1000, 0.001, 0.1) : 0.033;
+        cal.lastTs = now;
+        cal.t += dt;
+        // acuan bibir biasa = lebar mulut terbesar yang terlihat sejauh ini
+        if (m.wr > cal.baseWr) cal.baseWr = m.wr;
+        if (m.wr < cal.minWr) cal.minWr = m.wr;
+        const depth = cal.baseWr - m.wr;              // penyempitan saat ini
+        const depthBest = cal.baseWr - cal.minWr;     // penyempitan terdalam sejauh ini
+        if (depth >= 0.035 && m.mar < 0.36) {
+          cal.hold += dt;
+          $("calibStatus").textContent = "Kedeteksi! Terus tahan, jangan dilepas…";
+        } else {
+          cal.hold = Math.max(0, cal.hold - dt * 2);
+          $("calibStatus").textContent = depthBest >= 0.02
+            ? "Hampir! Sedikit lagi…"
+            : "Monyongkan bibir lebih ke depan…";
+        }
+        // bar maju terutama mengikuti LAMA menahan monyong (kedalaman
+        // monyong hanya membantu sampai ~55%) — umpan balik langsung
+        cal.progress = clamp(Math.max(Math.min(depthBest / 0.085, 0.55), cal.hold / 0.9), 0, 1);
+        $("calibProg").style.width = cal.progress * 100 + "%";
+        // selesai: monyong jelas ditahan agak lama (~0,9 detik — sengaja
+        // tidak terlalu singkat), atau batas waktu tercapai (pakai
+        // contoh terbaik yang ada)
+        if (cal.hold >= 0.9 || cal.t >= 15) finishCalibStep(cal.t >= 15);
+      }
+      function finishCalibStep(forced) {
+        const m = S.mouth;
+        cal.data[CAL_STEPS[cal.step].key] = {
+          wr: cal.minWr < 1 ? cal.minWr : m.wr,              // monyong terdalam yang terbaca
+          baseWr: cal.baseWr > 0.05 ? cal.baseWr : m.wr,     // lebar bibir biasa (acuan relatif)
+        };
+        beep(700, 900, 0.1, "triangle", 0.1);
+        cal.step++;
+        if (cal.step >= CAL_STEPS.length) { computeThresholds(); beginCountdown(); }
+        else renderCalibStep();
+      }
+      function computeThresholds() {
+        // Ambang RELATIF dari dua titik kalibrasi: bibir biasa (baseWr)
+        // dan monyong terdalam (wr). Lompat terpicu di ~55% perjalanan
+        // menuju monyong penuh — jadi saat main cukup monyong setengah
+        // saja sudah lompat (jauh lebih responsif), dan latch lepas
+        // hanya 0,016 di atasnya supaya monyong kedua (lompat 2x)
+        // bisa menyusul dengan cepat.
+        const p = cal.data.pout;
+        if (p && p.baseWr > 0.05 && p.wr > 0.03) {
+          const range = Math.max(0.02, p.baseWr - p.wr);
+          S.th.poutEnter = clamp(p.baseWr - range * 0.55, 0.20, 0.44);
+          S.th.poutExit = clamp(S.th.poutEnter + 0.016, 0, 0.46);
+        }
+      }
+
+      /* ---------------- game engine: lari ke kanan + lompat jurang ----------------
+         Koordinat dunia: x bertambah ke kanan (px), h = tinggi permukaan
+         pijakan dari tanah dasar (px). camX = tepi kiri dunia yang
+         terlihat; camH = tinggi acuan kamera (dihaluskan mengikuti
+         pijakan Steve).
+         Layar: screenX = worldX - camX;  screenYof(h) = y layar permukaan. */
+      const cv = $("game"), ctx = cv.getContext("2d");
+      const W = 960, H = 540;
+      const GRAV = 2600;                   // gravitasi px/s^2
+      const STEVE_W = 34, STEVE_H = 54;    // ukuran Steve (px)
+      const STEVE_SX = 190;                // posisi x Steve di layar
+      const JUMP_H = 158;                  // tinggi lompatan (px)
+      const JUMP_V = Math.sqrt(2 * GRAV * JUMP_H);
+      const G = {
+        time: 0, score: 0, level: 1, speedMul: 1, speed: 0,
+        camX: 0, camH: 0, y: 0, vy: 0,
+        grounded: true, jumps: 0, groundSeg: null, lastSegId: -1, pits: 0,
+        coyoteT: 0, jumpBufT: 0,
+        walkPhase: 0, segs: [], nextX: 0, nextH: 0, nextId: 0,
+        prevH: 0, sinceDouble: 0, prevLen: 0, prevLenCat: -1,
+        clouds: [], flashTxt: "", flashT: 0, ringT: 0, dead: false,
+      };
+      for (let i = 0; i < 8; i++) G.clouds.push({ x: Math.random() * (W + 280), y: Math.random() * 3000, s: 0.6 + Math.random() * 0.9 });
+
+      function levelFor(dist) { return 1 + Math.floor(Math.max(0, dist) / 2600); }
+
+      /* ---------------- TEMA TEMPAT (berganti tiap 3 level) ----------------
+         Level 1-3 Tsunami Aceh, 4-6 Kebakaran Kalimantan, 7-9 Gempa
+         NTT, lalu berputar lagi. Tiap tema punya langit, latar
+         belakang pemandangan (rumah tenggelam / pohon terbakar /
+         rumah hancur), jenis pijakan, dan bahaya di dasar layar
+         sendiri.        */
+      const THEMES = [
+        {
+          name: "Tsunami Aceh",
+          skyTop: "#2f8fd0", skyBot: "#cdeffb", sun: "#ffd93b",
+          hill: "rgba(31,110,150,.32)", cloud: "rgba(255,255,255,.92)",
+          kinds: ["sand", "dock", "sand", "dock"],
+        },
+        {
+          name: "Kebakaran Kalimantan",
+          skyTop: "#59291d", skyBot: "#e8915a", sun: "#ff7847",
+          hill: "rgba(30,16,10,.45)", cloud: "rgba(45,35,32,.5)",
+          kinds: ["char", "log", "char", "log"],
+        },
+        {
+          name: "Gempa NTT",
+          skyTop: "#7d94a6", skyBot: "#e8e0cd", sun: "#f4e3ac",
+          hill: "rgba(120,100,80,.4)", cloud: "rgba(255,252,240,.8)",
+          kinds: ["crack", "rock", "crack", "rock"],
+        },
+      ];
+      function themeIdxFor(level) { return Math.floor((Math.max(1, level) - 1) / 3) % THEMES.length; }
+      function themeFor(level) { return THEMES[themeIdxFor(level)]; }
+      // Pijakan berikutnya (setelah pijakan tempat Steve berdiri)
+      // adalah tanjakan wajib lompat 2x?
+      function nextNeedsDouble() {
+        if (!G.groundSeg) return false;
+        for (const s of G.segs) if (s.x0 > G.groundSeg.x1 - 1) return !!s.need2;
+        return false;
+      }
+
+      /* Parameter kesulitan dari level:
+         - gap: lebar jurang (makin lebar -> sebagian butuh lompat 2x)
+         - upMax: kenaikan tinggi pijakan berikutnya (makin tinggi).
+           Pijakan TIDAK PERNAH turun dan TIDAK PERNAH datar —
+           selalu naik terus, jadi Wowo memanjat tanpa henti.
+         - Panjang pijakan TIDAK dari satu rentang sempit: dicampur
+           dari 4 ukuran (pendek / sedang / panjang / sangat panjang)
+           supaya ritmenya variatif, tidak monoton. Ukuran yang sama
+           jarang muncul berurutan.        */
+      function diff(level) {
+        const l = Math.min(level, 12);
+        return {
+          gapMin: 92 + l * 9,
+          gapMax: 138 + l * 15,
+          upMax: Math.min(118, 52 + l * 7),
+        };
+      }
+      // Pilih panjang pijakan dari campuran ukuran yang lebar.
+      // Level tinggi sedikit menggeser campuran ke ukuran pendek,
+      // tapi semua ukuran tetap muncul di semua level.
+      function pickSegLen(level) {
+        const l = Math.min(level, 12);
+        const shrink = l * 4; // level tinggi: tiap ukuran sedikit lebih pendek
+        const cats = [
+          { w: 0.24 + l * 0.006, len: () => rand(120, 185) - shrink * 0.4 },  // pendek
+          { w: 0.36,             len: () => rand(200, 295) - shrink * 0.6 },  // sedang
+          { w: 0.25,             len: () => rand(320, 455) - shrink },        // panjang
+          { w: 0.15 - l * 0.006, len: () => rand(480, 620) - shrink * 1.4 },  // sangat panjang
+        ];
+        let tot = 0; for (const c of cats) tot += c.w;
+        let roll = Math.random() * tot, cat = 0;
+        for (let i = 0; i < cats.length; i++) { roll -= cats[i].w; if (roll <= 0) { cat = i; break; } }
+        // Hindari ukuran yang sama berurutan (sumber rasa monoton):
+        // kategori yang sama dengan pijakan sebelumnya diganti
+        // kategori lain pada sebagian besar kasus.
+        if (cat === G.prevLenCat && Math.random() < 0.7) {
+          const others = [0, 1, 2, 3].filter((i) => i !== cat);
+          cat = others[Math.floor(Math.random() * others.length)];
+        }
+        let len = Math.round(cats[cat].len());
+        // Jaga selisih nyata dari pijakan sebelumnya (min. 45px),
+        // supaya pergantian ukurannya benar-benar terasa.
+        if (G.prevLen && Math.abs(len - G.prevLen) < 45) len = G.prevLen + (len >= G.prevLen ? 55 : -55);
+        len = clamp(len, 110, 640);
+        G.prevLen = len; G.prevLenCat = cat;
+        return len;
+      }
+      function segAt(x) {
+        for (const s of G.segs) if (x >= s.x0 && x <= s.x1) return s;
+        return null;
+      }
+      /* Jenis pijakan mengikuti TEMA level tempat pijakan itu
+         berada (bukan ketinggian lagi). */
+      function kindFor(level) {
+        const ks = themeFor(level).kinds;
+        return ks[Math.floor(Math.random() * ks.length)];
+      }
+      function genSegs() {
+        while (G.nextX < G.camX + W + 520) {
+          const lv = levelFor(G.nextX);
+          const d = diff(lv);
+          let len = pickSegLen(lv);
+          const h = G.nextH;
+          // Kenaikan >160px tidak bisa dicapai sekali lompat (maks
+          // ~158px) -> pijakan ini WAJIB dilompati 2x.
+          const need2 = (h - G.prevH) > 160;
+          // Pijakan tanjakan wajib 2x jangan yang pendek: sesudah
+          // lompatan susah, pemain butuh tempat mendarat yang lega.
+          if (need2 && len < 250) { len = Math.round(rand(250, 340)); G.prevLen = len; G.prevLenCat = 1; }
+          G.segs.push({ id: G.nextId++, x0: G.nextX, x1: G.nextX + len, h: h, kind: kindFor(lv), theme: themeIdxFor(lv), need2: need2, seed: Math.random() * 10 });
+          G.prevH = h;
+          G.nextX += len + rand(d.gapMin, d.gapMax);
+          // NAIK TERUS, tanpa pengecualian: tinggi berikutnya SELALU
+          // lebih tinggi dari pijakan ini — tidak pernah turun dan
+          // tidak pernah datar. Kenaikan normal minimal 14px dan
+          // membesar per level. Sesekali (terjamin minimal tiap
+          // ~7 pijakan) dibuat TANJAKAN WAJIB LOMPAT 2x: naik
+          // 178-224px sekaligus.
+          G.sinceDouble++;
+          let dh;
+          if (G.nextId > 5 && G.sinceDouble >= 5 && (G.sinceDouble >= 7 || Math.random() < 0.22)) {
+            dh = rand(178, 224);
+            G.sinceDouble = 0;
+          } else {
+            dh = rand(14, d.upMax);
+          }
+          G.nextH = Math.round((G.nextH + dh) / 6) * 6;
+          if (G.nextH <= h) G.nextH = h + 12; // jaring pengaman: pembulatan tidak boleh membuatnya datar/turun
+        }
+        G.segs = G.segs.filter((s) => s.x1 > G.camX - 280);
+      }
+
+      function resetGame() {
+        G.time = 0; G.score = 0; G.level = 1; G.speedMul = 1; G.speed = 0;
+        G.camX = 0; G.camH = 0; G.y = 0; G.vy = 0;
+        G.grounded = true; G.jumps = 0; G.lastSegId = 0; G.pits = 0;
+        G.walkPhase = 0; G.flashT = 0; G.ringT = 0; G.dead = false;
+        G.coyoteT = 0; G.jumpBufT = 0;
+        G.segs = []; G.nextId = 0; G.prevH = 0; G.sinceDouble = 0;
+        G.prevLen = 900; G.prevLenCat = 3;
+        const start = { id: G.nextId++, x0: -120, x1: 780, h: 0, kind: "sand", theme: 0, need2: false, seed: 3 };
+        G.segs.push(start);
+        G.groundSeg = start;
+        G.nextX = start.x1 + 125; G.nextH = 24;
+        genSegs();
+        S.mouth.poutLatch = false;
+        $("scoreNum").textContent = "0";
+        $("levelNum").textContent = "1";
+        $("themeNum").textContent = THEMES[0].name;
+        $("speedNum").textContent = "×1.0";
+        $("distNum").textContent = "0m";
+        $("jumpDots").textContent = "●●";
+      }
+
+      /* Satu-satunya aksi: LOMPAT. Dari pijakan = lompat pertama;
+         di udara = lompat kedua (double jump). Maksimal 2x, lalu
+         harus mendarat dulu. Jatuh dari tepi tanpa lompat (jatah
+         masih 0) tetap boleh lompat 2x di udara biar tidak kejam.
+         Boleh juga terpicu saat hitung mundur: monyong pertamamu
+         langsung membuat Steve melompat begitu permainan mulai. */
+      function fireJump() {
+        if ((S.screen !== "play" && S.screen !== "count") || G.dead) return;
+        if (G.grounded || (G.jumps === 0 && G.coyoteT > 0)) {
+          // coyote time: baru saja lari melewati tepi (<=0,1 dtk) tetap
+          // dihitung lompat pertama, bukan lompat sia-sia di udara
+          G.vy = JUMP_V; G.grounded = false; G.groundSeg = null; G.jumps = 1; G.coyoteT = 0;
+          sfx.jump();
+          G.flashTxt = "LOMPAT!"; G.flashT = 0.35;
+          $("jumpDots").textContent = "●○";
+        } else if (G.jumps < 2) {
+          G.vy = JUMP_V * 0.96; G.jumps = 2; G.ringT = 0.3;
+          beep(520, 990, 0.16, "sine", 0.13);
+          G.flashTxt = "LOMPAT 2x!"; G.flashT = 0.4;
+          $("jumpDots").textContent = "○○";
+        } else {
+          // Jatah lompat habis tapi Steve hampir mendarat: simpan inputnya
+          // sebentar (buffer 0,15 dtk) — begitu mendarat langsung lompat
+          // lagi, jadi monyong yang sedikit kepagian tidak terbuang.
+          G.jumpBufT = 0.15;
+        }
+      }
+
+      function update(dt) {
+        G.time += dt;
+        // level naik dari jarak tempuh
+        const lv = levelFor(G.camX + STEVE_SX);
+        if (lv !== G.level) {
+          const newTheme = themeIdxFor(lv), oldTheme = themeIdxFor(G.level);
+          G.level = lv;
+          $("levelNum").textContent = lv;
+          $("themeNum").textContent = THEMES[newTheme].name;
+          if (newTheme !== oldTheme) {
+            // ganti tema = momen besar: umumkan nama tempat barunya
+            G.flashTxt = "TEMA: " + THEMES[newTheme].name.toUpperCase(); G.flashT = 1.3;
+          } else {
+            G.flashTxt = "LEVEL " + lv + "!"; G.flashT = 0.8;
+          }
+          sfx.level();
+        }
+        // kecepatan lari naik terus seiring waktu & level
+        G.speedMul = 1 + G.time * 0.015 + (G.level - 1) * 0.05;
+        G.speed = 295 * G.speedMul;
+        $("speedNum").textContent = "×" + G.speedMul.toFixed(1);
+
+        // skor mengalir sebanding kecepatan + bonus per jurang dilewati
+        G.score += dt * 10 * G.speedMul;
+        $("scoreNum").textContent = Math.floor(G.score);
+        $("distNum").textContent = Math.floor((G.camX + STEVE_SX) / 31) + "m";
+
+        G.camX += G.speed * dt;
+        const wx = G.camX + STEVE_SX; // posisi dunia kaki Steve
+
+        if (G.grounded) {
+          G.walkPhase += dt * G.speed / 15;
+          const seg = segAt(wx);
+          if (!seg || seg !== G.groundSeg) {
+            // lari melewati tepi pijakan -> mulai jatuh ke jurang
+            G.grounded = false; G.groundSeg = null; G.vy = 0; G.coyoteT = 0.1;
+          } else {
+            G.y = seg.h;
+          }
+        }
+        if (!G.grounded) {
+          const prevY = G.y;
+          G.vy -= GRAV * dt;
+          G.y += G.vy * dt;
+          if (G.vy <= 0) {
+            for (const s of G.segs) {
+              if (wx >= s.x0 + 3 && wx <= s.x1 - 3 && prevY >= s.h - 0.5 && G.y <= s.h) {
+                G.y = s.h; G.vy = 0; G.grounded = true; G.groundSeg = s;
+                if (s.id !== G.lastSegId) {
+                  G.pits++;
+                  G.score += 14 * G.speedMul;   // bonus jurang berhasil dilewati
+                  G.lastSegId = s.id;
+                }
+                G.jumps = 0;
+                $("jumpDots").textContent = "●●";
+                sfx.land();
+                // ada lompatan tersimpan di buffer? langsung eksekusi
+                if (G.jumpBufT > 0) { G.jumpBufT = 0; fireJump(); }
+                break;
+              }
+            }
+          }
+        }
+
+        // kamera vertikal mengikuti tinggi pijakan Steve (halus)
+        let target = G.camH;
+        if (G.grounded && G.groundSeg) target = G.groundSeg.h;
+        else if (G.y > G.camH + 170) target = G.y - 170;
+        G.camH += (target - G.camH) * Math.min(1, dt * 4.5);
+
+        genSegs();
+        if (G.flashT > 0) G.flashT -= dt;
+        if (G.ringT > 0) G.ringT -= dt;
+        if (G.coyoteT > 0) G.coyoteT -= dt;
+        if (G.jumpBufT > 0) G.jumpBufT -= dt;
+
+        // kaki Steve sudah keluar dari bawah layar = jatuh ke jurang.
+        // Tidak ada HP: sekali jatuh, permainan langsung selesai.
+        const feetSY = H - 110 - (G.y - G.camH);
+        if (feetSY - STEVE_H > H + 46 && !G.dead) { G.dead = true; gameOver(); }
+      }
+
+      function gameOver() {
+        S.screen = "over";
+        sfx.over();
+        const final = Math.floor(G.score);
+        const isBest = final > S.best;
+        if (isBest) S.best = final;
+        $("bestNum").textContent = S.best;
+        $("finalScore").textContent = final;
+        $("finalLevel").textContent = G.level;
+        $("finalDist").textContent = Math.floor((G.camX + STEVE_SX) / 31) + "m";
+        $("finalBest").textContent = S.best;
+        $("newBest").classList.toggle("on", isBest && final > 0);
+        $("hud").classList.remove("on");
+        $("mouthbar").classList.remove("on");
+        $("mouthNotif").classList.remove("on");
+        $("pip").classList.remove("st-pout");
+        stopVoice();
+        $("btnRecalib").style.display = S.mode === "camera" ? "" : "none";
+        showOverlay("ovOver");
+      }
+
+      /* ---------------- gambar ---------------- */
+      function screenYof(h) { return H - 110 - (h - G.camH); }
+
+      function draw() {
+        const th = themeFor(G.level);
+        // langit + matahari blok mengikuti tema aktif
+        const sky = ctx.createLinearGradient(0, 0, 0, H);
+        sky.addColorStop(0, th.skyTop);
+        sky.addColorStop(1, th.skyBot);
+        ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        ctx.globalAlpha = 0.28; ctx.fillStyle = th.sun; ctx.fillRect(826, 36, 72, 72);
+        ctx.globalAlpha = 1; ctx.fillRect(836, 46, 52, 52);
+        ctx.restore();
+        // latar belakang SESUAI TEMA (bukan gedung generik):
+        // siluet pemandangan bencana digambar 2 lapis parallax
+        drawBackdrop(themeIdxFor(G.level), th);
+        // awan blok persegi (di tema kebakaran terbaca sebagai asap)
+        ctx.fillStyle = th.cloud;
+        for (const c of G.clouds) {
+          let sx = (c.x - G.camX * 0.45) % (W + 280);
+          if (sx < 0) sx += W + 280;
+          sx -= 140;
+          const sy = 26 + (c.y % 140);
+          ctx.fillRect(sx, sy, 74 * c.s, 16 * c.s);
+          ctx.fillRect(sx + 14 * c.s, sy - 10 * c.s, 42 * c.s, 10 * c.s);
+          ctx.fillRect(sx + 8 * c.s, sy + 16 * c.s, 52 * c.s, 8 * c.s);
+        }
+        // deretan pijakan + jurang di antaranya
+        for (const s of G.segs) drawSeg(s);
+        drawBottomBand();
+        drawSteve();
+
+        // cincin efek saat double jump
+        if (G.ringT > 0 && S.screen === "play") {
+          const r = (0.3 - G.ringT) / 0.3;
+          ctx.save();
+          ctx.globalAlpha = 1 - r;
+          ctx.strokeStyle = "#4aa3d8"; ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.ellipse(STEVE_SX, screenYof(G.y) - 4, 22 + r * 30, 7 + r * 8, 0, 0, 7);
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (G.flashT > 0 && S.screen === "play") {
+          ctx.save();
+          ctx.globalAlpha = clamp(G.flashT / 0.4, 0, 1);
+          ctx.font = "800 42px 'Baloo 2', sans-serif";
+          ctx.textAlign = "center";
+          ctx.lineWidth = 8; ctx.strokeStyle = "rgba(23,50,63,.55)";
+          const y = 128 - (0.4 - Math.min(G.flashT, 0.4)) * 30;
+          ctx.strokeText(G.flashTxt, W / 2, y);
+          ctx.fillStyle = "#ffb703";
+          ctx.fillText(G.flashTxt, W / 2, y);
+          ctx.restore();
+        }
+        // peringatan merah di bawah saat Steve sedang jatuh ke jurang
+        if (S.screen === "play" && !G.grounded && G.y < G.camH - 30) {
+          const grd = ctx.createLinearGradient(0, H - 110, 0, H);
+          grd.addColorStop(0, "rgba(230,57,70,0)"); grd.addColorStop(1, "rgba(230,57,70,.35)");
+          ctx.fillStyle = grd; ctx.fillRect(0, H - 110, W, 110);
+        }
+      }
+
+      /* ---------------- latar belakang sesuai tema ----------------
+         BUKAN gedung generik — tiap tema punya pemandangan sendiri:
+         - Tsunami Aceh: genangan air + rumah TENGGELAM (cuma atap &
+           sedikit dinding yang muncul), pohon kelapa setengah
+           tenggelam, dan gelombang besar yang menggulung.
+         - Kebakaran Kalimantan: deretan POHON TERBAKAR — siluet
+           pohon gosong dengan nyala api & cahaya bara di tajuknya,
+           plus pohon yang sudah hangus tinggal tunggul.
+         - Gempa NTT: RUMAH-RUMAH HANCUR — atap roboh miring,
+           dinding retak, puing berserakan di kaki rumah.
+         Digambar 2 lapis parallax pelan di belakang pijakan;
+         variasi tiap elemen ditentukan indeksnya (deterministik). */
+      function backRand(i, k) { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); }
+
+      function drawBackdrop(ti, th) {
+        const baseY = H - 30;
+        for (let layer = 0; layer < 2; layer++) {
+          const par = layer === 0 ? 0.15 : 0.3;
+          const sp = layer === 0 ? 380 : 280;
+          const sc = layer === 0 ? 0.7 : 1;
+          const shift = G.camX * par;
+          const off = shift % sp;
+          const base = Math.floor(shift / sp);
+          ctx.save();
+          // pita dasar: genangan air (Aceh) / tanah (Kalimantan & NTT)
+          if (ti === 0) {
+            ctx.fillStyle = layer === 0 ? "rgba(23,95,140,.45)" : "rgba(23,95,140,.8)";
+            ctx.beginPath();
+            ctx.moveTo(0, H);
+            const wy = baseY - 4 * sc + (layer === 0 ? 10 : 0);
+            for (let x = 0; x <= W; x += 30) ctx.lineTo(x, wy + Math.sin(x / 55 + ambT * 1.6 + layer * 2) * 3.5);
+            ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+          } else {
+            ctx.fillStyle = layer === 0 ? th.hill : (ti === 1 ? "#2e170d" : "#77664d");
+            ctx.fillRect(0, baseY - 3, W, H - baseY + 3);
+          }
+          const sil = layer === 0 ? th.hill : (ti === 0 ? "#134e73" : ti === 1 ? "#20100a" : "#5d4c38");
+          ctx.fillStyle = sil;
+          const count = Math.ceil(W / sp) + 2;
+          for (let k = 0; k < count; k++) {
+            const idx = base + k;
+            const x = -off + k * sp + backRand(idx, layer) * 70;
+            const r = backRand(idx, layer + 5);
+            if (ti === 0) drawSunken(x, baseY, sc, r, layer, sil);
+            else if (ti === 1) drawBurnTree(x, baseY, sc, r, layer, sil);
+            else drawRuinedHouse(x, baseY, sc, r, layer, sil);
+          }
+          ctx.restore();
+        }
+      }
+
+      // elemen Aceh: rumah tenggelam / pohon kelapa / gelombang besar
+      function drawSunken(x, baseY, sc, r, layer, sil) {
+        const wl = baseY - 4 * sc; // garis permukaan air
+        if (r < 0.3) {
+          // pohon kelapa setengah tenggelam: batang miring + daun di atas air
+          const lean = (r - 0.15) * 60 * sc;
+          ctx.fillRect(x + lean * 0.4, wl - 52 * sc, 7 * sc, 52 * sc);
+          ctx.save();
+          ctx.translate(x + lean, wl - 52 * sc);
+          ctx.strokeStyle = sil; ctx.lineWidth = 3.4 * sc; ctx.lineCap = "round";
+          for (let f = 0; f < 5; f++) {
+            const a = -2.7 + f * 0.55;
+            ctx.beginPath(); ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(Math.cos(a) * 20 * sc, Math.sin(a) * 14 * sc - 6 * sc, Math.cos(a) * 32 * sc, Math.sin(a) * 20 * sc + 8 * sc);
+            ctx.stroke();
+          }
+          ctx.restore();
+        } else if (r > 0.74) {
+          // gelombang besar menggulung di kejauhan
+          ctx.beginPath();
+          ctx.moveTo(x - 10 * sc, wl + 2);
+          ctx.quadraticCurveTo(x + 6 * sc, wl - 66 * sc, x + 48 * sc, wl - 78 * sc);
+          ctx.quadraticCurveTo(x + 82 * sc, wl - 86 * sc, x + 80 * sc, wl - 52 * sc);
+          ctx.quadraticCurveTo(x + 78 * sc, wl - 34 * sc, x + 58 * sc, wl - 40 * sc);
+          ctx.quadraticCurveTo(x + 74 * sc, wl - 58 * sc, x + 52 * sc, wl - 58 * sc);
+          ctx.quadraticCurveTo(x + 26 * sc, wl - 56 * sc, x + 30 * sc, wl + 2);
+          ctx.closePath(); ctx.fill();
+          if (layer === 1) {
+            ctx.fillStyle = "rgba(255,255,255,.75)";
+            ctx.fillRect(x + 40 * sc, wl - 80 * sc, 9 * sc, 5 * sc);
+            ctx.fillRect(x + 56 * sc, wl - 74 * sc, 7 * sc, 4 * sc);
+            ctx.fillStyle = sil;
+          }
+        } else {
+          // rumah tenggelam: atap + sedikit dinding di atas permukaan air,
+          // sebagian miring karena terbawa arus
+          const tilt = r > 0.55 ? 0.16 : 0.03;
+          ctx.save();
+          ctx.translate(x + 40 * sc, wl - 12 * sc);
+          ctx.rotate(tilt);
+          ctx.fillRect(-40 * sc, 0, 80 * sc, 13 * sc);              // dinding yang masih muncul
+          ctx.beginPath();                                            // atap
+          ctx.moveTo(-48 * sc, 0); ctx.lineTo(0, -32 * sc); ctx.lineTo(48 * sc, 0);
+          ctx.closePath(); ctx.fill();
+          ctx.fillRect(22 * sc, -40 * sc, 9 * sc, 12 * sc);          // cerobong
+          ctx.restore();
+        }
+      }
+
+      // elemen Kalimantan: pohon terbakar / tunggul hangus
+      function drawBurnTree(x, baseY, sc, r, layer, sil) {
+        if (r < 0.28) {
+          // tunggul hangus: batang pendek + satu dahan patah
+          ctx.fillRect(x, baseY - 44 * sc, 10 * sc, 44 * sc);
+          ctx.save();
+          ctx.translate(x + 5 * sc, baseY - 34 * sc); ctx.rotate(-0.7);
+          ctx.fillRect(0, -3 * sc, 26 * sc, 6 * sc);
+          ctx.restore();
+        } else {
+          const th1 = (118 + r * 40) * sc; // tinggi pohon
+          ctx.fillRect(x, baseY - th1, 11 * sc, th1);                                   // batang
+          ctx.fillRect(x - 30 * sc, baseY - th1 - 34 * sc, 70 * sc, 40 * sc);           // tajuk bawah
+          ctx.fillRect(x - 18 * sc, baseY - th1 - 56 * sc, 48 * sc, 26 * sc);           // tajuk atas
+          ctx.save();                                                                    // dahan miring
+          ctx.translate(x + 6 * sc, baseY - th1 * 0.62); ctx.rotate(0.65);
+          ctx.fillRect(0, -3 * sc, 30 * sc, 6 * sc);
+          ctx.restore();
+        }
+        // nyala api + bara hanya di lapis depan supaya tidak berlebihan
+        if (layer === 1) {
+          const fy = baseY - (r < 0.28 ? 44 * sc : (118 + r * 40) * sc + 52 * sc);
+          const fl = 13 + Math.sin(ambT * 9 + x * 0.7) * 4;
+          ctx.fillStyle = "#ff7a2d";
+          ctx.beginPath();
+          ctx.moveTo(x - 15 * sc, fy + 8 * sc); ctx.lineTo(x - 4 * sc, fy - fl); ctx.lineTo(x + 6 * sc, fy + 8 * sc);
+          ctx.closePath(); ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(x + 16 * sc, fy + 12 * sc); ctx.lineTo(x + 25 * sc, fy - fl * 0.7); ctx.lineTo(x + 33 * sc, fy + 12 * sc);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "#ffc93b";
+          ctx.beginPath();
+          ctx.moveTo(x - 8 * sc, fy + 8 * sc); ctx.lineTo(x - 4 * sc, fy - fl * 0.5); ctx.lineTo(x, fy + 8 * sc);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "rgba(255,122,45,.28)"; // cahaya bara menyala di kaki pohon
+          ctx.beginPath(); ctx.arc(x + 6 * sc, baseY - 4, 30 * sc, 0, 7); ctx.fill();
+          ctx.fillStyle = sil;
+        }
+      }
+
+      // elemen NTT: rumah hancur / puing
+      function drawRuinedHouse(x, baseY, sc, r, layer, sil) {
+        const w = 86 * sc, hgt = 54 * sc;
+        ctx.fillRect(x, baseY - hgt, w, hgt);                       // dinding
+        ctx.fillStyle = "rgba(0,0,0,.35)";                          // jendela & pintu gelap
+        ctx.fillRect(x + 12 * sc, baseY - hgt + 16 * sc, 15 * sc, 15 * sc);
+        ctx.fillRect(x + 58 * sc, baseY - 22 * sc, 14 * sc, 22 * sc);
+        ctx.fillStyle = sil;
+        if (r < 0.5) {
+          // atap roboh miring, satu sisi ambruk menimpa dinding
+          ctx.save();
+          ctx.translate(x + w / 2, baseY - hgt);
+          ctx.rotate(-0.3 + r * 0.25);
+          ctx.beginPath();
+          ctx.moveTo(-w * 0.62, 2); ctx.lineTo(0, -30 * sc); ctx.lineTo(w * 0.62, 2);
+          ctx.closePath(); ctx.fill();
+          ctx.restore();
+        } else {
+          // atap tinggal separuh + balok patah mencuat
+          ctx.beginPath();
+          ctx.moveTo(x - 6 * sc, baseY - hgt + 2); ctx.lineTo(x + w * 0.28, baseY - hgt - 28 * sc); ctx.lineTo(x + w * 0.46, baseY - hgt + 2);
+          ctx.closePath(); ctx.fill();
+          ctx.save();
+          ctx.translate(x + w * 0.62, baseY - hgt); ctx.rotate(0.5);
+          ctx.fillRect(0, -3 * sc, 30 * sc, 6 * sc);
+          ctx.restore();
+        }
+        // retakan di dinding (lapis depan saja)
+        if (layer === 1) {
+          ctx.strokeStyle = "rgba(20,14,8,.6)"; ctx.lineWidth = 2;
+          const cx0 = x + w * (0.3 + r * 0.3);
+          ctx.beginPath();
+          ctx.moveTo(cx0, baseY - hgt + 2);
+          ctx.lineTo(cx0 + 6 * sc, baseY - hgt * 0.62);
+          ctx.lineTo(cx0 - 2 * sc, baseY - hgt * 0.3);
+          ctx.lineTo(cx0 + 7 * sc, baseY - 4);
+          ctx.stroke();
+        }
+        // puing di kaki rumah
+        ctx.beginPath();
+        ctx.moveTo(x - 14 * sc, baseY); ctx.lineTo(x - 2 * sc, baseY - 13 * sc); ctx.lineTo(x + 12 * sc, baseY);
+        ctx.closePath(); ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x + w - 8 * sc, baseY); ctx.lineTo(x + w + 3 * sc, baseY - 10 * sc); ctx.lineTo(x + w + 16 * sc, baseY);
+        ctx.closePath(); ctx.fill();
+      }
+
+      /* Bahaya di dasar layar mengikuti tema: air laut bergelombang
+         (Tsunami Aceh), api + bara beterbangan (Kebakaran
+         Kalimantan), reruntuhan tanah retak (Gempa NTT). */
+      let ambT = 0;
+      function drawBottomBand() {
+        const ti = themeIdxFor(G.level), y0 = H - 44;
+        if (ti === 0) {
+          ctx.fillStyle = "#1d7fb8";
+          ctx.beginPath();
+          ctx.moveTo(0, H);
+          for (let x = 0; x <= W; x += 24) ctx.lineTo(x, y0 + Math.sin(x / 46 + ambT * 2.2) * 5);
+          ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "rgba(255,255,255,.65)";
+          for (let x = 12; x < W; x += 92) {
+            const wy = y0 + Math.sin(x / 46 + ambT * 2.2) * 5;
+            ctx.fillRect(x + ((ambT * 30) % 40), wy - 2, 26, 3);
+          }
+        } else if (ti === 1) {
+          const grd = ctx.createLinearGradient(0, y0 - 8, 0, H);
+          grd.addColorStop(0, "rgba(255,120,40,0)");
+          grd.addColorStop(0.45, "#c33d12");
+          grd.addColorStop(1, "#7e1f08");
+          ctx.fillStyle = grd; ctx.fillRect(0, y0 - 8, W, H - y0 + 8);
+          for (let i = 0; i < 26; i++) {
+            const fx = (i * 173 + (i * 37) % 50) % W;
+            const fl = 12 + (i * 29) % 16 + Math.sin(ambT * 9 + i * 1.7) * 5;
+            ctx.fillStyle = i % 3 ? "#ff8b2d" : "#ffc93b";
+            ctx.beginPath();
+            ctx.moveTo(fx - 8, H); ctx.lineTo(fx, H - fl - 16); ctx.lineTo(fx + 8, H);
+            ctx.closePath(); ctx.fill();
+          }
+          ctx.fillStyle = "rgba(255,170,60,.85)";
+          for (let i = 0; i < 16; i++) {
+            const ex = (i * 211 + ambT * (14 + (i % 5) * 6)) % (W + 30) - 15;
+            const ey = H - 60 - ((ambT * (22 + (i % 4) * 9) + i * 47) % 300);
+            ctx.fillRect(ex, ey, 3.4, 3.4);
+          }
+        } else {
+          ctx.fillStyle = "#8a7a63";
+          ctx.beginPath();
+          ctx.moveTo(0, H);
+          for (let x = 0; x <= W; x += 60) ctx.lineTo(x, y0 + ((x * 37) % 13));
+          ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = "#6e5f4c";
+          for (let x = 20; x < W; x += 130) { ctx.fillRect(x, y0 + 16, 34, 10); ctx.fillRect(x + 60, y0 + 26, 22, 8); }
+          ctx.strokeStyle = "rgba(40,30,20,.55)"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(60, H - 4); ctx.lineTo(96, y0 + 18); ctx.lineTo(130, H - 10); ctx.stroke();
+        }
+      }
+
+      function drawSeg(s) {
+        const x0 = s.x0 - G.camX, x1 = s.x1 - G.camX;
+        if (x1 < -12 || x0 > W + 12) return;
+        const top = screenYof(s.h), w = x1 - x0, depth = H - top + 6;
+        const sx = (n) => x0 + (s.seed * n % Math.max(w - 16, 1));
+        // badan pijakan menjulang ke bawah (dinding tebing jurang),
+        // tampilannya mengikuti jenis pijakan dari tema aktif:
+        // pasir & dermaga kayu (Aceh), gosong & batang hangus
+        // (Kalimantan), tanah retak & batu (NTT)
+        if (s.kind === "sand") {
+          ctx.fillStyle = "#d9b36c"; ctx.fillRect(x0, top, w, depth);
+          ctx.fillStyle = "#c39a4e"; ctx.fillRect(x0, top + 30, w, 7);
+          ctx.fillStyle = "rgba(120,84,30,.35)";
+          ctx.fillRect(sx(13), top + 52, 11, 6);
+          ctx.fillRect(sx(29), top + 84, 8, 5);
+          ctx.fillStyle = "#f6dc9a"; ctx.fillRect(x0, top, w, 10);
+          ctx.fillStyle = "#e8c87e"; ctx.fillRect(x0, top + 10, w, 3);
+        } else if (s.kind === "dock") {
+          ctx.fillStyle = "#a97a44"; ctx.fillRect(x0, top, w, depth);
+          ctx.fillStyle = "#8a5f30"; ctx.fillRect(x0, top + 30, w, 6); ctx.fillRect(x0, top + 62, w, 6);
+          ctx.fillStyle = "rgba(0,0,0,.16)"; ctx.fillRect(x0 + w * 0.33, top, 3, 36); ctx.fillRect(x0 + w * 0.66, top, 3, 36);
+          ctx.fillStyle = "#c79a5b"; ctx.fillRect(x0, top, w, 9);
+        } else if (s.kind === "char") {
+          ctx.fillStyle = "#38302c"; ctx.fillRect(x0, top, w, depth);
+          ctx.fillStyle = "#241e1b"; ctx.fillRect(x0, top, w, 10);
+          ctx.fillStyle = "rgba(255,122,45,.5)"; ctx.fillRect(x0, top + 10, w, 2);
+          ctx.fillStyle = "#ff7a2d";
+          ctx.fillRect(sx(17), top + 4, 5, 3);
+          ctx.fillRect(sx(41), top + 40, 4, 3);
+          ctx.fillStyle = "#ffb03a"; ctx.fillRect(sx(53), top + 22, 3.4, 2.6);
+        } else if (s.kind === "log") {
+          ctx.fillStyle = "#4a3421"; ctx.fillRect(x0, top, w, depth);
+          ctx.fillStyle = "rgba(0,0,0,.25)"; ctx.fillRect(x0, top + 26, w, 5); ctx.fillRect(x0, top + 52, w, 5);
+          ctx.fillStyle = "#2e2015"; ctx.fillRect(x0, top, w, 9);
+          ctx.strokeStyle = "rgba(255,122,45,.65)"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(sx(19), top + 2); ctx.lineTo(sx(19) + 8, top + 8); ctx.stroke();
+        } else if (s.kind === "crack") {
+          ctx.fillStyle = "#a08b72"; ctx.fillRect(x0, top, w, depth);
+          ctx.fillStyle = "#8a755c"; ctx.fillRect(x0, top + 34, w, 7);
+          ctx.fillStyle = "#c9b08a"; ctx.fillRect(x0, top, w, 10);
+          ctx.strokeStyle = "rgba(52,38,24,.7)"; ctx.lineWidth = 2.2;
+          const cx0 = sx(23);
+          ctx.beginPath(); ctx.moveTo(cx0, top + 1); ctx.lineTo(cx0 + 7, top + 16); ctx.lineTo(cx0 + 2, top + 30); ctx.lineTo(cx0 + 10, top + 46); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx0 + 7, top + 16); ctx.lineTo(cx0 + 18, top + 24); ctx.stroke();
+        } else { // rock
+          ctx.fillStyle = "#989ea6"; ctx.fillRect(x0, top, w, depth);
+          ctx.fillStyle = "#7e858d"; ctx.fillRect(x0, top + 34, w, 8);
+          ctx.fillStyle = "rgba(0,0,0,.14)"; ctx.fillRect(sx(23), top + 56, 12, 7);
+          ctx.fillStyle = "#bcc2c9"; ctx.fillRect(x0, top, w, 9);
+          ctx.fillStyle = "rgba(255,255,255,.3)"; ctx.fillRect(x0, top, w, 3);
+        }
+        // stud bulat ala balok mainan di permukaan atas
+        ctx.fillStyle = "rgba(255,255,255,.20)";
+        const n = Math.max(2, Math.floor(w / 26));
+        for (let i = 0; i < n; i++) {
+          const cx = x0 + (i + 0.5) * (w / n);
+          ctx.beginPath(); ctx.arc(cx, top + 3, 4.6, 0, 7); ctx.fill();
+        }
+        // bayangan tepi tebing (kanan = mulut jurang, kiri = dinding naik)
+        ctx.fillStyle = "rgba(0,0,0,.20)"; ctx.fillRect(x1 - 5, top, 5, depth);
+        ctx.fillStyle = "rgba(0,0,0,.10)"; ctx.fillRect(x0, top, 4, depth);
+        // TANDA WAJIB LOMPAT 2x: dua panah kuning menumpuk di dinding
+        // tebing dekat tepi kiri pijakan yang tinggi ini
+        if (s.need2) {
+          ctx.fillStyle = "#ffb703";
+          ctx.strokeStyle = "rgba(23,50,63,.45)"; ctx.lineWidth = 1.5;
+          for (let k = 0; k < 2; k++) {
+            const cx = x0 + 26, cy = top + 62 - k * 26;
+            ctx.beginPath();
+            ctx.moveTo(cx - 11, cy); ctx.lineTo(cx, cy - 13); ctx.lineTo(cx + 11, cy);
+            ctx.lineTo(cx + 11, cy + 7); ctx.lineTo(cx - 11, cy + 7);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+          }
+        }
+      }
+      function drawSteve() {
+        const syFeet = screenYof(G.y);          // y layar posisi kaki
+        const x = STEVE_SX;
+        const airborne = !G.grounded;
+        const t = G.walkPhase;
+        ctx.save();
+        if (G.grounded) {
+          ctx.fillStyle = "rgba(0,0,0,.20)";
+          ctx.beginPath(); ctx.ellipse(x, syFeet + 3, 24, 5, 0, 0, 7); ctx.fill();
+        }
+        ctx.translate(x, syFeet); // Steve selalu menghadap kanan (arah lari)
+        // Kostum: kemeja SAFARI COKLAT MUDA khas Gerindra/Prabowo —
+        // kerah, dua saku dada bertutup, garis kancing, pangkat di
+        // bahu, celana khaki lebih gelap, rambut abu-abu.
+        const skin = "#c68e5e", hair = "#a3a3a3", shirt = "#d2ab6b", shirtDark = "#b78f4e", pants = "#8f7a4e";
+        const legSwing = airborne ? 0 : Math.sin(t) * 5;
+        // kaki (blok persegi)
+        if (airborne) {
+          ctx.fillStyle = pants; ctx.fillRect(-13, -20, 11, 15); ctx.fillRect(3, -23, 11, 13);
+          ctx.fillStyle = "#4a3626"; ctx.fillRect(-14, -6, 13, 6); ctx.fillRect(3, -11, 13, 6);
+        } else {
+          ctx.fillStyle = pants;
+          ctx.fillRect(-13 + legSwing, -24, 11, 20); ctx.fillRect(2 - legSwing, -24, 11, 20);
+          ctx.fillStyle = "#4a3626";
+          ctx.fillRect(-14 + legSwing, -5, 13, 5); ctx.fillRect(1 - legSwing, -5, 13, 5);
+        }
+        // badan: kemeja safari coklat muda
+        ctx.fillStyle = shirt; ctx.fillRect(-14, -50, 28, 27);
+        ctx.fillStyle = "rgba(0,0,0,.10)"; ctx.fillRect(-14, -27, 28, 4);
+        // kerah safari + pangkat bahu
+        ctx.fillStyle = shirtDark; ctx.fillRect(-14, -50, 28, 3.5);
+        // garis kancing di tengah dada
+        ctx.fillStyle = "rgba(0,0,0,.16)"; ctx.fillRect(-0.75, -46.5, 1.5, 20.5);
+        ctx.fillStyle = "#6e5426";
+        ctx.fillRect(-1, -43, 2, 2); ctx.fillRect(-1, -38, 2, 2); ctx.fillRect(-1, -33, 2, 2); ctx.fillRect(-1, -28.5, 2, 2);
+        // dua saku dada safari (tutup saku + badan saku)
+        ctx.fillStyle = shirtDark;
+        ctx.fillRect(-12, -44.5, 9, 2.5); ctx.fillRect(3, -44.5, 9, 2.5);
+        ctx.fillStyle = "rgba(0,0,0,.13)";
+        ctx.fillRect(-12, -42, 9, 5.5); ctx.fillRect(3, -42, 9, 5.5);
+        // lengan
+        ctx.fillStyle = skin;
+        if (airborne) { ctx.fillRect(-20, -56, 7, 22); ctx.fillRect(13, -56, 7, 22); }
+        else {
+          const aSwing = Math.sin(t) * 4;
+          ctx.fillRect(-20, -48 + aSwing, 7, 24); ctx.fillRect(13, -48 - aSwing, 7, 24);
+        }
+        ctx.fillStyle = shirtDark;
+        if (airborne) { ctx.fillRect(-20, -56, 7, 8); ctx.fillRect(13, -56, 7, 8); }
+        else { ctx.fillRect(-20, -48 + Math.sin(t) * 4, 7, 8); ctx.fillRect(13, -48 - Math.sin(t) * 4, 7, 8); }
+        // kepala blok (rambut abu-abu)
+        ctx.fillStyle = skin; ctx.fillRect(-13, -76, 26, 26);
+        ctx.fillStyle = hair; ctx.fillRect(-13, -76, 26, 7); ctx.fillRect(-13, -76, 3, 13); ctx.fillRect(10, -76, 3, 13);
+        ctx.fillStyle = "#8a8a8a"; ctx.fillRect(0, -66.5, 5, 1.6); ctx.fillRect(8, -66.5, 5, 1.6);
+        // wajah piksel
+        ctx.fillStyle = "#fff"; ctx.fillRect(0, -64, 5, 4); ctx.fillRect(8, -64, 5, 4);
+        ctx.fillStyle = "#3b2d8f"; ctx.fillRect(2, -64, 3, 4); ctx.fillRect(8, -64, 3, 4);
+        ctx.fillStyle = "#a06a3c"; ctx.fillRect(4, -60, 5, 3);
+        ctx.fillStyle = "#7a4a26"; ctx.fillRect(2, -55, 10, 2.6);
+        ctx.restore();
+      }
+
+      /* ---------------- loop & alur layar ---------------- */
+      let lastTs = 0;
+      function loop(ts) {
+        requestAnimationFrame(loop);
+        const dt = clamp((ts - lastTs) / 1000, 0, 0.05); lastTs = ts;
+        ambT += dt; // jam animasi ambient (ombak, api, bara) — selalu berjalan
+        if (S.screen === "play") update(dt);
+        else if (S.screen === "menu" || S.screen === "over") {
+          // latar menu: dunia diam, awan melayang pelan
+          for (const c of G.clouds) { c.x -= 12 * dt; if (c.x < -160) c.x = W + 120; }
+        }
+        draw();
+        updateVoiceUI();
+        voiceTick(ts);
+        if (S.screen === "count") tickCountdown(dt);
+      }
+      resetGame(); // latar menu langsung menampilkan pijakan awal
+      requestAnimationFrame(loop);
+
+      const overlays = ["ovMenu", "ovCalib", "ovVoice", "ovCount", "ovOver"];
+      function showOverlay(id) {
+        for (const o of overlays) $(o).classList.toggle("on", o === id);
+        if (!id) for (const o of overlays) $(o).classList.remove("on");
+      }
+
+      let countT = 0, countShown = -1;
+      function beginCountdown() {
+        resetGame();
+        S.screen = "count"; countT = 0; countShown = -1;
+        showOverlay("ovCount");
+        if (S.mode === "camera") { $("pip").appendChild(video); video.style.display = "block"; $("pip").classList.add("on"); }
+        $("hud").classList.add("on");
+        if (S.mode !== "buttons") {
+          $("mouthbar").classList.add("on");
+          $("msNeutral").style.display = S.mode === "camera" ? "" : "none";
+          $("msPout").style.display = S.mode === "camera" ? "" : "none";
+          $("msVoice").style.display = S.mode === "voice" ? "" : "none";
+        }
+        if (S.mode === "voice") startVoice();
+      }
+      function tickCountdown(dt) {
+        countT += dt;
+        const n = 3 - Math.floor(countT / 0.72);
+        if (n !== countShown && n >= 1) { countShown = n; $("countNum").textContent = n; sfx.count(); }
+        if (countT >= 0.72 * 3) {
+          $("countNum").textContent = "MULAI!";
+          if (countShown !== 0) { countShown = 0; sfx.go(); }
+        }
+        if (countT >= 0.72 * 3 + 0.45) { S.screen = "play"; showOverlay(null); }
+      }
+
+      /* ---------------- wiring UI ---------------- */
+      $("btnStart").addEventListener("click", async () => {
+        ac();
+        stopVoice();
+        S.mode = "camera";
+        $("btnStart").textContent = "Menyiapkan kamera…";
+        const ok = await startCamera();
+        $("btnStart").textContent = "Mulai Kalibrasi";
+        if (!ok) {
+          const e = $("menuErr");
+          e.textContent = "Kamera tidak bisa dipakai. Izinkan akses kamera, atau main pakai tombol.";
+          e.classList.add("on");
+          return;
+        }
+        $("menuErr").classList.remove("on");
+        $("controls").classList.add("on");
+        startCalib();
+      });
+
+      $("btnVoice").addEventListener("click", () => {
+        ac();
+        stopVoice();
+        S.mode = "voice";
+        $("menuErr").classList.remove("on");
+        openVoiceEnroll();
+      });
+
+      $("btnRec1").addEventListener("click", () => startEnroll());
+      $("btnVoicePlay").addEventListener("click", () => {
+        if (!V.templates.nye) return;
+        ac();
+        V.enroll = null;
+        S.mode = "voice";
+        setCamChip("Mode suara “Nye”", false);
+        $("pip").classList.remove("on");
+        $("controls").classList.add("on");
+        beginCountdown();
+      });
+      $("btnVoiceBack").addEventListener("click", () => {
+        stopVoice();
+        S.mode = "camera";
+        S.screen = "menu";
+        showOverlay("ovMenu");
+      });
+
+      $("btnButtons").addEventListener("click", () => {
+        ac();
+        stopVoice();
+        S.mode = "buttons";
+        setCamChip("Mode tombol", false);
+        $("controls").classList.add("on");
+        $("mouthbar").classList.remove("on");
+        beginCountdown();
+      });
+
+      $("btnCalibSnap").addEventListener("click", () => { if (S.screen === "calib") finishCalibStep(true); });
+      $("btnCalibSkip").addEventListener("click", () => {
+        // pakai ambang bawaan; tetap mode kamera
+        if (S.mode === "camera") { beginCountdown(); }
+      });
+
+      $("btnAgain").addEventListener("click", () => { ac(); beginCountdown(); });
+      $("btnRecalib").addEventListener("click", async () => {
+        ac();
+        if (S.mode === "camera" && S.camStarted) startCalib();
+        else if (S.mode === "camera") { const ok = await startCamera(); if (ok) startCalib(); else beginCountdown(); }
+        else beginCountdown();
+      });
+      $("btnMenu").addEventListener("click", () => {
+        stopVoice();
+        S.screen = "menu";
+        $("hud").classList.remove("on"); $("mouthbar").classList.remove("on"); $("pip").classList.remove("on");
+        $("mouthNotif").classList.remove("on");
+        showOverlay("ovMenu");
+      });
+
+      $("btnJump").addEventListener("click", () => fireJump());
+      window.addEventListener("keydown", (e) => {
+        if (e.repeat) return;
+        if (e.code === "ArrowUp" || e.code === "KeyW" || e.code === "Space") { e.preventDefault(); fireJump(); }
+      });
+    </script>
+  </body>
+</html>
