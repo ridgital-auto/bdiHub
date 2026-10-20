@@ -34,6 +34,21 @@ function load() {
       localStorage.removeItem(OLD_KEY);
     } catch { /* abaikan */ }
   }
+
+  // tanam proyek "game" bawaan sekali saja — tidak diulang bila user menghapus manual
+  let seeded = false;
+  try { seeded = localStorage.getItem("bdihub.seeded.game.v1") === "1"; } catch { /* abaikan */ }
+  if (!seeded) {
+    const changed = seedGames(out);
+    if (changed) {
+      out.updatedAt = Date.now();
+      try {
+        localStorage.setItem(KEY, JSON.stringify(out));
+        localStorage.setItem("bdihub.seeded.game.v1", "1");
+      } catch { /* abaikan */ }
+    }
+  }
+
   return out;
 }
 function migrateV1(links) {
@@ -69,6 +84,35 @@ function sanitize(s) {
     projects: Array.isArray(s.projects) ? s.projects : [],
     links: Array.isArray(s.links) ? s.links : []
   };
+}
+
+/* ---------- seed bawaan: proyek "game" + 5 game kamera (ditanam 2026-10-20) ---------- */
+const GAME_BASE = "https://ridgital-auto.github.io/bdiHub/games/";
+const SEED_PROJECT = { id: "game-proj", name: "game", desc: "Kumpulan game kamera & web app anak" };
+const SEED_LINKS = [
+  { id: "game-link-efek-kamera", name: "Efek Kamera", url: GAME_BASE + "efek-kamera.html", desc: "Efek kamera cermin untuk Kiki — 105 efek wajah, tombol foto & GIF" },
+  { id: "game-link-kontrol-mulut", name: "Game Kontrol Mulut", url: GAME_BASE + "game-kontrol-mulut.html", desc: "Game wajah dikontrol gerakan mulut" },
+  { id: "game-link-nose-downhill", name: "Nose Downhill", url: GAME_BASE + "nose-downhill.html", desc: "Game kamera downhill sepeda gunung endless" },
+  { id: "game-link-bucungs", name: "Bucungs", url: GAME_BASE + "bucungs.html", desc: "Game runner dikontrol monyong (mulut)" },
+  { id: "game-link-wajah-ceria", name: "Wajah Ceria", url: GAME_BASE + "wajah-ceria.html", desc: "5 mini-game kamera wajah untuk anak" }
+];
+function seedGames(s) {
+  // digabung berdasarkan id — tidak pernah menggandakan, dan kalau user
+  // menghapusnya manual, id tetap tercatat di sini hanya bila user yang hapus
+  // SETELAH seed pertama; penanda seededGame disimpan terpisah di localStorage.
+  let changed = false;
+  if (!s.projects.some(p => p.id === SEED_PROJECT.id)) {
+    s.projects.push({ ...SEED_PROJECT, added: Date.now() });
+    changed = true;
+  }
+  const ids = new Set(s.links.map(l => l.id));
+  SEED_LINKS.forEach(l => {
+    if (!ids.has(l.id)) {
+      s.links.push({ ...l, projectId: SEED_PROJECT.id, pinned: false, hits: 0, added: Date.now() });
+      changed = true;
+    }
+  });
+  return changed;
 }
 function saveLocal() {
   store.updatedAt = Date.now();
