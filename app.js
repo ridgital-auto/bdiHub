@@ -7,6 +7,7 @@ let store = load();          // {version, projects:[], links:[]}
 let activeProject = "all";   // "all" | projectId | "none"
 let editingLinkId = null;
 let editingProjectId = null;
+let removeAttachedFile = false;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -76,10 +77,10 @@ function sanitize(s) {
 const GAME_BASE = "https://ridgital-auto.github.io/bdiHub/games/";
 const SEED_PROJECT = { id: "game-proj", name: "game", desc: "Kumpulan game kamera & web app anak" };
 const SEED_LINKS = [
-  { id: "game-link-efek-kamera", name: "Efek Kamera", url: GAME_BASE + "efek-kamera.html", desc: "Efek kamera cermin untuk Kiki — 105 efek wajah, tombol foto & GIF" },
-  { id: "game-link-nose-downhill", name: "Nose Downhill", url: GAME_BASE + "nose-downhill.html", desc: "Game kamera downhill sepeda gunung endless" },
-  { id: "game-link-bucungs", name: "Bucungs", url: GAME_BASE + "bucungs.html", desc: "Game runner dikontrol monyong (mulut)" },
-  { id: "game-link-wajah-ceria", name: "Wajah Ceria", url: GAME_BASE + "wajah-ceria.html", desc: "5 mini-game kamera wajah untuk anak" }
+  { id: "game-link-efek-kamera", name: "Efek Kamera", icon: "📸", url: GAME_BASE + "efek-kamera.html", desc: "Efek kamera cermin untuk Kiki — 105 efek wajah, tombol foto & GIF" },
+  { id: "game-link-nose-downhill", name: "Nose Downhill", icon: "🚵", url: GAME_BASE + "nose-downhill.html", desc: "Game kamera downhill sepeda gunung endless" },
+  { id: "game-link-bucungs", name: "Bucungs", icon: "😮", url: GAME_BASE + "bucungs.html", desc: "Game runner dikontrol monyong (mulut)" },
+  { id: "game-link-wajah-ceria", name: "Wajah Ceria", icon: "😊", url: GAME_BASE + "wajah-ceria.html", desc: "5 mini-game kamera wajah untuk anak" }
 ];
 function seedGames(s) {
   // digabung berdasarkan id — tidak pernah menggandakan, dan kalau user
@@ -118,6 +119,12 @@ const REMOVED_SEED_IDS = ["game-link-kontrol-mulut"];
   const before = store.links.length;
   store.links = store.links.filter(l => !REMOVED_SEED_IDS.includes(l.id));
   if (store.links.length !== before) changed = true;
+  // lengkapi icon pada link seed yang sudah tertanam sebelum ada fitur icon
+  const iconMap = {};
+  SEED_LINKS.forEach(s => { iconMap[s.id] = s.icon; });
+  store.links.forEach(l => {
+    if (iconMap[l.id] && !l.icon) { l.icon = iconMap[l.id]; changed = true; }
+  });
   if (changed) {
     store.updatedAt = Date.now();
     try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* abaikan */ }
@@ -223,6 +230,14 @@ function attachFavicon(wrap, url) {
 }
 
 /* download file target link untuk dibuka offline */
+function dataURLtoBlob(dataURL) {
+  const parts = dataURL.split(",");
+  const mime = (parts[0].match(/:(.*?);/) || [])[1] || "application/octet-stream";
+  const bin = atob(parts[1] || "");
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
 async function downloadLink(l) {
   let fileName = "";
   try {
@@ -231,21 +246,34 @@ async function downloadLink(l) {
     if (f && /\.(html?|zip|pdf|json|txt)$/i.test(f)) fileName = decodeURIComponent(f);
   } catch { /* abaikan */ }
   if (!fileName) fileName = (l.name || "file").replace(/[\\/:*?"<>|]/g, "").trim() + ".html";
-  try {
-    const r = await fetch(l.url);
-    if (!r.ok) throw 0;
-    const blob = await r.blob();
+  let blob = null;
+  if (l.file) {
+    try { blob = dataURLtoBlob(l.file); fileName = l.fileName || fileName; } catch { /* abaikan */ }
+  }
+  if (!blob) {
+    try {
+      const r = await fetch(l.url);
+      if (!r.ok) throw 0;
+      blob = await r.blob();
+    } catch { /* abaikan */ }
+  }
+  if (blob) {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = fileName;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
-  } catch {
-    if (confirm("Download langsung gagal di situs ini. Buka link-nya saja di tab baru?")) {
-      window.open(l.url, "_blank", "noopener");
-    }
+  } else if (confirm("Download langsung gagal di situs ini. Buka link-nya saja di tab baru?")) {
+    window.open(l.url, "_blank", "noopener");
   }
+}
+function openFileBlob(l) {
+  try {
+    const url = URL.createObjectURL(dataURLtoBlob(l.file));
+    window.open(url, "_blank", "noopener");
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch { alert("File tidak bisa dibuka ❌"); }
 }
 
 function card(l) {
@@ -260,7 +288,7 @@ function card(l) {
         <button title="Opsi">⋮</button>
         <div class="tools-menu hidden">
           <button data-act="visit">↗ Buka</button>
-          <button data-act="dl">⬇️ Simpan (offline)</button>
+          <button data-act="dl">⬇️ Download (offline)</button>
           <button data-act="pin">${l.pinned ? "📍 Lepas pin" : "📌 Sematkan"}</button>
           <button data-act="edit">✏️ Edit</button>
           <button data-act="copy">📋 Salin URL</button>
@@ -272,20 +300,29 @@ function card(l) {
     ${l.desc ? `<p class="desc">${esc(l.desc)}</p>` : ""}
     <div class="card-foot">
       <div>
-        <a class="visit" href="${esc(l.url)}" target="_blank" rel="noopener">Kunjungi ↗</a>
-        <button class="visit dl" title="Download file ini agar bisa dibuka tanpa buka bdiHub lagi">⬇ Simpan</button>
+        <a class="visit" ${l.file ? "" : `href="${esc(l.url)}" target="_blank" rel="noopener"`}>${l.file ? "Buka ▶" : "Kunjungi ↗"}</a>
+        <button class="visit dl" title="Download file ini agar bisa dibuka tanpa buka bdiHub lagi">⬇ Download</button>
         ${l.hits ? `<div class="hits">dibuka ${l.hits}×</div>` : ""}
       </div>
     </div>`;
 
   const toggle = el.querySelector(".tools-menu");
-  attachFavicon(el.querySelector(".favwrap"), l.url);
+  if (l.icon) el.querySelector(".favwrap").textContent = l.icon;
+  else attachFavicon(el.querySelector(".favwrap"), l.url);
   el.querySelector(".card-tools > button").onclick = (e) => {
     e.stopPropagation();
     document.querySelectorAll(".tools-menu").forEach(m => m !== toggle && m.classList.add("hidden"));
     toggle.classList.toggle("hidden");
   };
-  el.querySelector(".visit").onclick = () => { l.hits = (l.hits || 0) + 1; save(); setTimeout(render, 300); };
+  const visitBtn = el.querySelector(".visit");
+  if (l.file) {
+    visitBtn.onclick = (e) => {
+      e.preventDefault();
+      l.hits = (l.hits || 0) + 1; save(); openFileBlob(l); setTimeout(render, 300);
+    };
+  } else {
+    visitBtn.onclick = () => { l.hits = (l.hits || 0) + 1; save(); setTimeout(render, 300); };
+  }
   el.querySelector(".visit.dl").onclick = (e) => { e.stopPropagation(); downloadLink(l); };
   toggle.onclick = (e) => {
     e.stopPropagation();
@@ -322,6 +359,10 @@ function openLinkModal(l) {
   $("fName").value = l?.name || "";
   $("fUrl").value = l?.url || "";
   $("fDesc").value = l?.desc || "";
+  $("fFile").value = "";
+  removeAttachedFile = false;
+  $("fFileInfo").textContent = l?.fileName ? ("📎 " + l.fileName + " (pilih file baru untuk mengganti)") : "";
+  $("fFileClear").classList.toggle("hidden", !(l && l.file));
   fillProjectSelect($("fProject"), defProj);
   $("fPin").checked = !!l?.pinned;
   $("modal").classList.remove("hidden");
@@ -333,16 +374,51 @@ $("btnAdd").onclick = () => openLinkModal(null);
 $("btnCancel").onclick = closeLinkModal;
 $("modal").addEventListener("click", e => { if (e.target === $("modal")) closeLinkModal(); });
 
-$("form").onsubmit = (e) => {
+$("fFileClear").onclick = () => {
+  removeAttachedFile = true;
+  $("fFileInfo").textContent = "File akan dihapus saat disimpan.";
+  $("fFileClear").classList.add("hidden");
+};
+$("fFile").onchange = () => {
+  const f = $("fFile").files[0];
+  if (f) {
+    removeAttachedFile = false;
+    $("fFileInfo").textContent = "📎 " + f.name + " (" + Math.round(f.size / 1024) + " KB)";
+  } else if (!removeAttachedFile) {
+    const l = editingLinkId ? store.links.find(x => x.id === editingLinkId) : null;
+    $("fFileInfo").textContent = l?.fileName ? ("📎 " + l.fileName + " (pilih file baru untuk mengganti)") : "";
+  }
+};
+
+$("form").onsubmit = async (e) => {
   e.preventDefault();
   const name = $("fName").value.trim();
-  const url = normUrl($("fUrl").value);
-  if (!name || !url) return;
+  let url = $("fUrl").value.trim();
+  if (url) url = normUrl(url);
+  const existing = editingLinkId ? store.links.find(x => x.id === editingLinkId) : null;
+  let file = existing?.file || null;
+  let fileName = existing?.fileName || "";
+  if (removeAttachedFile) { file = null; fileName = ""; }
+  const picked = $("fFile").files[0];
+  if (picked) {
+    if (picked.size > 3 * 1024 * 1024) { alert("File terlalu besar (maks ~3 MB agar muat di penyimpanan browser) ❌"); return; }
+    try {
+      file = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(picked);
+      });
+      fileName = picked.name;
+    } catch { alert("File tidak bisa dibaca ❌"); return; }
+  }
+  if (!name || (!url && !file)) { alert("Isi nama, lalu isi URL atau upload file 🙂"); return; }
   const data = {
     name, url,
     desc: $("fDesc").value.trim(),
     projectId: $("fProject").value || null,
-    pinned: $("fPin").checked
+    pinned: $("fPin").checked,
+    file, fileName
   };
   if (editingLinkId) {
     const l = store.links.find(x => x.id === editingLinkId);
@@ -470,13 +546,13 @@ $("fileInput").onchange = (e) => {
           store.projects.push({ id: p.id, name: p.name, desc: p.desc || "", added: p.added || Date.now() });
         });
         data.links.forEach(l => {
-          if (!l.name || !l.url) return;
+          if (!l.name || (!l.url && !l.file)) return;
           if (!l.id || lIds.has(l.id)) l.id = uid();
           lIds.add(l.id);
           let pid = l.projectId || null;
           if (pid && pMap[pid]) pid = pMap[pid];
           if (pid && !pIds.has(pid)) pid = null;
-          store.links.push({ id: l.id, name: l.name, url: l.url, desc: l.desc || "", projectId: pid, pinned: !!l.pinned, hits: l.hits || 0, added: l.added || Date.now() });
+          store.links.push({ id: l.id, name: l.name, url: l.url, desc: l.desc || "", projectId: pid, pinned: !!l.pinned, hits: l.hits || 0, added: l.added || Date.now(), icon: l.icon || "", file: l.file || null, fileName: l.fileName || "" });
         });
         save(); render(); alert("Import selesai ✅");
       }

@@ -64,8 +64,13 @@
       <label>Nama link <span>*</span>
         <input id="fName" type="text" required maxlength="80" placeholder="cth: Puskesdoc Generator">
       </label>
-      <label>URL <span>*</span>
-        <input id="fUrl" type="text" required inputmode="url" placeholder="https://…">
+      <label>URL <span class="muted small">(isi URL atau upload file)</span>
+        <input id="fUrl" type="text" inputmode="url" placeholder="https://…">
+      </label>
+      <label>Upload file (opsional)
+        <input id="fFile" type="file" accept=".html,.htm,.pdf,.txt,.json,.zip,.png,.jpg,.jpeg">
+        <span id="fFileInfo" class="muted small"></span>
+        <button type="button" id="fFileClear" class="btn sm ghost hidden">✕ Hapus file terlampir</button>
       </label>
       <label>Deskripsi
         <textarea id="fDesc" rows="2" maxlength="200" placeholder="Keterangan singkat (opsional)"></textarea>
