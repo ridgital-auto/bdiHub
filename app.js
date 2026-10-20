@@ -77,7 +77,6 @@ const GAME_BASE = "https://ridgital-auto.github.io/bdiHub/games/";
 const SEED_PROJECT = { id: "game-proj", name: "game", desc: "Kumpulan game kamera & web app anak" };
 const SEED_LINKS = [
   { id: "game-link-efek-kamera", name: "Efek Kamera", url: GAME_BASE + "efek-kamera.html", desc: "Efek kamera cermin untuk Kiki — 105 efek wajah, tombol foto & GIF" },
-  { id: "game-link-kontrol-mulut", name: "Game Kontrol Mulut", url: GAME_BASE + "game-kontrol-mulut.html", desc: "Game wajah dikontrol gerakan mulut" },
   { id: "game-link-nose-downhill", name: "Nose Downhill", url: GAME_BASE + "nose-downhill.html", desc: "Game kamera downhill sepeda gunung endless" },
   { id: "game-link-bucungs", name: "Bucungs", url: GAME_BASE + "bucungs.html", desc: "Game runner dikontrol monyong (mulut)" },
   { id: "game-link-wajah-ceria", name: "Wajah Ceria", url: GAME_BASE + "wajah-ceria.html", desc: "5 mini-game kamera wajah untuk anak" }
@@ -101,19 +100,27 @@ function seedGames(s) {
   return changed;
 }
 
-/* tanam proyek "game" bawaan sekali saja saat aplikasi dimuat.
-   Dipanggil di sini (setelah semua konstanta siap), BUKAN di dalam load(),
-   karena load() dieksekusi di baris paling atas sebelum konstanta SEED_* ada. */
-(function seedGameProjectOnce() {
+/* link seed yang sudah dihapus permanen oleh user — dibersihkan dari data lama too */
+const REMOVED_SEED_IDS = ["game-link-kontrol-mulut"];
+
+/* tanam proyek "game" bawaan sekali saja saat aplikasi dimuat, sekaligus
+   membersihkan link seed yang sudah dihapus. Dipanggil di sini (setelah semua
+   konstanta siap), BUKAN di dalam load(), karena load() dieksekusi di baris
+   paling atas sebelum konstanta SEED_* ada. */
+(function maintainSeeds() {
+  let changed = false;
   let seeded = false;
   try { seeded = localStorage.getItem("bdihub.seeded.game.v1") === "1"; } catch { /* abaikan */ }
-  if (seeded) return;
-  if (seedGames(store)) {
+  if (!seeded) {
+    if (seedGames(store)) changed = true;
+    try { localStorage.setItem("bdihub.seeded.game.v1", "1"); } catch { /* abaikan */ }
+  }
+  const before = store.links.length;
+  store.links = store.links.filter(l => !REMOVED_SEED_IDS.includes(l.id));
+  if (store.links.length !== before) changed = true;
+  if (changed) {
     store.updatedAt = Date.now();
-    try {
-      localStorage.setItem(KEY, JSON.stringify(store));
-      localStorage.setItem("bdihub.seeded.game.v1", "1");
-    } catch { /* abaikan */ }
+    try { localStorage.setItem(KEY, JSON.stringify(store)); } catch { /* abaikan */ }
   }
 })();
 function saveLocal() {
