@@ -35,20 +35,6 @@ function load() {
     } catch { /* abaikan */ }
   }
 
-  // tanam proyek "game" bawaan sekali saja — tidak diulang bila user menghapus manual
-  let seeded = false;
-  try { seeded = localStorage.getItem("bdihub.seeded.game.v1") === "1"; } catch { /* abaikan */ }
-  if (!seeded) {
-    const changed = seedGames(out);
-    if (changed) {
-      out.updatedAt = Date.now();
-      try {
-        localStorage.setItem(KEY, JSON.stringify(out));
-        localStorage.setItem("bdihub.seeded.game.v1", "1");
-      } catch { /* abaikan */ }
-    }
-  }
-
   return out;
 }
 function migrateV1(links) {
@@ -114,6 +100,22 @@ function seedGames(s) {
   });
   return changed;
 }
+
+/* tanam proyek "game" bawaan sekali saja saat aplikasi dimuat.
+   Dipanggil di sini (setelah semua konstanta siap), BUKAN di dalam load(),
+   karena load() dieksekusi di baris paling atas sebelum konstanta SEED_* ada. */
+(function seedGameProjectOnce() {
+  let seeded = false;
+  try { seeded = localStorage.getItem("bdihub.seeded.game.v1") === "1"; } catch { /* abaikan */ }
+  if (seeded) return;
+  if (seedGames(store)) {
+    store.updatedAt = Date.now();
+    try {
+      localStorage.setItem(KEY, JSON.stringify(store));
+      localStorage.setItem("bdihub.seeded.game.v1", "1");
+    } catch { /* abaikan */ }
+  }
+})();
 function saveLocal() {
   store.updatedAt = Date.now();
   localStorage.setItem(KEY, JSON.stringify(store));
