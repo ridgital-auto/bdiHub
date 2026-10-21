@@ -73,6 +73,18 @@ const DriveSync = {
   markSessionStale() {
     this.setStatus("expired", "Sesi perlu disambung ulang — klik 🔑 Sambung ulang");
     this.renderAuth();
+    // Jaring pengaman: coba diam-diam sekali lagi pada sentuhan pertama user
+    // (percobaan saat halaman dimuat kadang gagal sesaat — jaringan/GIS belum siap).
+    if (this._retryArmed) return;
+    this._retryArmed = true;
+    const retry = async (e) => {
+      document.removeEventListener("pointerdown", retry);
+      if (e.target.closest("#btnLogin, #btnLoginMain, #btnLogout")) return;
+      if (!this.user || this.token || this._pending) return;
+      const ok = await this.requestTokenSilent();
+      if (ok) { await this.fetchUser(); this.renderAuth(); await this.initialSync(); }
+    };
+    document.addEventListener("pointerdown", retry);
   },
 
   // Hub hanya tampil setelah login; sebelum itu yang tampil layar login.
@@ -122,7 +134,10 @@ const DriveSync = {
     return new Promise((resolve) => {
       this._pending = resolve;
       try {
-        this.ensureTokenClient().requestAccessToken();
+        // hint akun: langsung arahkan ke akun yang benar (HP punya banyak akun Google)
+        const opts = {};
+        if (this.user?.email) { opts.hint = this.user.email; opts.login_hint = this.user.email; }
+        this.ensureTokenClient().requestAccessToken(opts);
         setTimeout(() => { if (this._pending) { this._pending = null; resolve(false); } }, 45000);
       } catch { this._pending = null; resolve(false); }
     });
@@ -145,7 +160,12 @@ const DriveSync = {
     return new Promise((resolve) => {
       this._pending = resolve;
       try {
-        this.ensureTokenClient().requestAccessToken({ prompt: "" });
+        // hint WAJIB bila di HP ada banyak akun Google: tanpa petunjuk akun,
+        // Google menolak permintaan diam-diam ("perlu pilih akun") dan sesi
+        // gagal dipulihkan — user jadi diminta login berulang-ulang.
+        const opts = { prompt: "" };
+        if (this.user?.email) { opts.hint = this.user.email; opts.login_hint = this.user.email; }
+        this.ensureTokenClient().requestAccessToken(opts);
         setTimeout(() => { if (this._pending) { this._pending = null; resolve(false); } }, 15000);
       } catch { this._pending = null; resolve(false); }
     });
