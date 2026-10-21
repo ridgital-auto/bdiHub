@@ -10,6 +10,29 @@ const BACKUP_FILE = "bdihub-backup.json";
 const ADMIN_EMAIL = "ridgitalstudio@gmail.com";
 const USER_KEY = "linkhub.user.v1";
 
+/* Gabung dua data berdasarkan id (union) — TIDAK ada data yang dibuang.
+   Untuk id yang sama di kedua sisi, versi dari sisi yang updatedAt-nya lebih
+   baru yang menang. Mencegah kejadian data lama tertimpah data kosong dari
+   browser baru (dan sebaliknya). */
+function mergeStores(local, drive) {
+  const newer = (drive.updatedAt || 0) > (local.updatedAt || 0) ? drive : local;
+  const older = newer === drive ? local : drive;
+  const pm = new Map((older.projects || []).map(p => [p.id, p]));
+  (newer.projects || []).forEach(p => pm.set(p.id, p));
+  const lm = new Map((older.links || []).map(l => [l.id, l]));
+  (newer.links || []).forEach(l => lm.set(l.id, l));
+  return {
+    version: 2,
+    updatedAt: Math.max(local.updatedAt || 0, drive.updatedAt || 0),
+    projects: [...pm.values()],
+    links: [...lm.values()],
+  };
+}
+function storeSignature(s) {
+  const norm = (arr) => [...(arr || [])].sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  return JSON.stringify({ p: norm(s.projects), l: norm(s.links) });
+}
+
 const DriveSync = {
   token: null,
   tokenExpiresAt: 0,
@@ -23,10 +46,44 @@ const DriveSync = {
   status: "off",         // off | pending | syncing | ok | expired | error
   statusMsg: "",
 
-  init() {
+  async init() {
     try { this.user = JSON.parse(localStorage.getItem(USER_KEY)); } catch { this.user = null; }
+    const mainBtn = $("btnLoginMain");
+    if (mainBtn) mainBtn.onclick = () => this.login();
+    this.updateGate();
+    this.renderAuth();
+    if (!this.user) return;
+    // Pernah login di browser ini: sambung ulang diam-diam supaya refresh
+    // halaman tidak terasa logout. Sesi hanya berakhir lewat tombol Keluar.
+    this.setStatus("syncing", "Menyambung ulang sesi…");
+    this.renderAuth();
+    try { await this.ensureGis(); }
+    catch { this.markSessionStale(); return; }
+    const ok = await this.requestTokenSilent();
+    if (ok) {
+      await this.fetchUser();
+      this.updateGate();
+      this.renderAuth();
+      await this.initialSync();
+    } else {
+      this.markSessionStale();
+    }
+  },
+
+  markSessionStale() {
+    this.setStatus("expired", "Sesi perlu disambung ulang — klik 🔑 Sambung ulang");
     this.renderAuth();
   },
+
+  // Hub hanya tampil setelah login; sebelum itu yang tampil layar login.
+  updateGate() {
+    const loggedIn = !!this.user;
+    const ls = $("loginScreen"), as = $("appScreen");
+    if (ls) ls.classList.toggle("hidden", loggedIn);
+    if (as) as.classList.toggle("hidden", !loggedIn);
+  },
+
+  setLoginMsg(t) { const el = $("loginStatus"); if (el) el.textContent = t || ""; },
 
   /* ---------- auth ---------- */
   ensureGis() {
@@ -44,6 +101,9 @@ const DriveSync = {
     this._tc = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: LOGIN_SCOPE,
+      error_callback: () => {
+        if (this._pending) { const r = this._pending; this._pending = null; r(false); }
+      },
       callback: (resp) => {
         const ok = !!(resp && resp.access_token);
         if (ok) {
@@ -78,12 +138,28 @@ const DriveSync = {
     return ok && !!this.token;
   },
 
+  // Minta token TANPA tampilan (prompt kosong). Berhasil bila sesi Google di
+  // browser masih aktif & izin sudah pernah diberikan — dipakai saat memuat
+  // halaman agar user tidak perlu login ulang setiap refresh.
+  requestTokenSilent() {
+    return new Promise((resolve) => {
+      this._pending = resolve;
+      try {
+        this.ensureTokenClient().requestAccessToken({ prompt: "" });
+        setTimeout(() => { if (this._pending) { this._pending = null; resolve(false); } }, 15000);
+      } catch { this._pending = null; resolve(false); }
+    });
+  },
+
   async login() {
+    this.setLoginMsg("Membuka login Google…");
     try { await this.ensureGis(); }
-    catch (e) { alert(e.message || "Gagal login Google"); return; }
+    catch (e) { this.setLoginMsg(""); alert(e.message || "Gagal login Google"); return; }
     const ok = await this.requestTokenNow();
-    if (!ok) { this.setStatus("error", "Login dibatalkan"); this.renderAuth(); return; }
+    if (!ok) { this.setStatus("error", "Login dibatalkan"); this.setLoginMsg("Login dibatalkan — coba lagi ya."); this.renderAuth(); return; }
+    this.setLoginMsg("");
     await this.fetchUser();
+    this.updateGate();
     this.renderAuth();
     await this.initialSync();
   },
@@ -114,6 +190,8 @@ const DriveSync = {
     clearTimeout(this.syncTimer);
     localStorage.removeItem(USER_KEY);
     this.setStatus("off", "");
+    this.setLoginMsg("");
+    this.updateGate();
     this.renderAuth();
   },
 
@@ -229,26 +307,23 @@ const DriveSync = {
     this.setStatus("syncing", "Menyinkronkan…");
     try {
       await this.findBackupFile();
-      if (this.fileId) {
-        const drive = await this.downloadBackup().catch(() => null);
-        const dTime = (drive && drive.updatedAt) || 0;
-        const lTime = store.updatedAt || 0;
-        const driveHas = drive && Array.isArray(drive.links);
-        if (driveHas && dTime > lTime) {
-          store = sanitize({ version: 2, projects: drive.projects, links: drive.links, updatedAt: dTime });
-          if (activeProject !== "all" && activeProject !== "none" &&
-              !store.projects.some(p => p.id === activeProject)) activeProject = "all";
-          saveLocal();
-          render();
-          this.setStatus("ok", "Data dari Drive dipakai");
-        } else if (driveHas && lTime >= dTime && (store.links.length || store.projects.length)) {
+      const drive = this.fileId ? await this.downloadBackup().catch(() => null) : null;
+      if (drive && Array.isArray(drive.links)) {
+        // GABUNG data lokal & Drive berdasarkan id — tidak ada yang tertimpah.
+        const localBefore = sanitize(store);
+        const merged = mergeStores(localBefore, sanitize(drive));
+        const changedLocal = storeSignature(merged) !== storeSignature(localBefore);
+        const changedDrive = storeSignature(merged) !== storeSignature(sanitize(drive));
+        store = merged;
+        if (activeProject !== "all" && activeProject !== "none" &&
+            !store.projects.some(p => p.id === activeProject)) activeProject = "all";
+        saveLocal();
+        if (changedLocal) render();
+        if (changedDrive) {
           await this.uploadBackup();
-          this.setStatus("ok", "Backup Drive diperbarui");
-        } else if (!driveHas && (store.links.length || store.projects.length)) {
-          await this.uploadBackup();
-          this.setStatus("ok", "Backup Drive dibuat");
+          this.setStatus("ok", "Data digabung & disinkronkan ✓");
         } else {
-          this.setStatus("ok", "Siap sinkron");
+          this.setStatus("ok", changedLocal ? "Data dari Drive dipakai" : "Sudah sinkron ✓");
         }
       } else if (store.links.length || store.projects.length) {
         await this.uploadBackup();
@@ -312,11 +387,17 @@ const DriveSync = {
           ${this.user.picture ? `<img src="${esc(this.user.picture)}" class="avatar" alt="">` : "👤"}
           <span class="uname">${esc(this.user.name || this.user.email || "Pengguna")}${isAdmin ? " 👑" : ""}</span>
           <span class="sync-dot" title="${esc(this.statusMsg)}">${dot}</span>
-          <button id="btnLogout" class="btn sm ghost" title="Keluar">⏻</button>
+          <button id="btnLogout" class="btn sm ghost" title="Keluar dari akun Google">⏻ Keluar</button>
         </div>`;
       $("btnLogout").onclick = () => this.logout();
     } else if (this.user && !this.token) {
-      box.innerHTML = `<button id="btnLogin" class="btn">🔑 Login lagi <span class="sync-dot" title="${esc(this.statusMsg)}">${dot}</span></button>`;
+      box.innerHTML = `
+        <div class="user-chip" title="${esc(this.user.email || "")}">
+          ${this.user.picture ? `<img src="${esc(this.user.picture)}" class="avatar" alt="">` : "👤"}
+          <span class="uname">${esc(this.user.name || this.user.email || "Pengguna")}</span>
+          <span class="sync-dot" title="${esc(this.statusMsg)}">${dot}</span>
+          <button id="btnLogin" class="btn sm" title="Sambung ulang ke Google">🔑 Sambung ulang</button>
+        </div>`;
       $("btnLogin").onclick = () => this.login();
     } else {
       box.innerHTML = `<button id="btnLogin" class="btn">🔑 Masuk dengan Google</button>`;

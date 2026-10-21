@@ -11,6 +11,19 @@
 </head>
 <body>
 
+<!-- Layar login: hub hanya tampil setelah login -->
+<div id="loginScreen" class="login-screen">
+  <div class="login-card">
+    <img src="logo.svg" alt="bdiHub" class="login-logo">
+    <h1>bdiHub</h1>
+    <p class="login-tag">Kumpulan link web app kamu, dikelompokkan per proyek.<br>Login dulu untuk melihat &amp; menyinkronkan datamu.</p>
+    <button id="btnLoginMain" class="btn primary login-btn">🔑 Masuk dengan Google</button>
+    <p id="loginStatus" class="login-status"></p>
+    <p class="login-note">Data tersimpan aman di Google Drive akun kamu sendiri.</p>
+  </div>
+</div>
+
+<div id="appScreen" class="hidden">
 <header class="topbar">
   <div class="brand">
     <img src="logo.svg" alt="bdiHub" class="logo-img">
@@ -52,8 +65,9 @@
 </main>
 
 <footer>
-  <p>bdiHub • data tersimpan otomatis di browser ini • backup rutin lewat Export JSON 💾</p>
+  <p>bdiHub • data tersimpan &amp; tersinkron otomatis ke Google Drive kamu 🔄</p>
 </footer>
+</div><!-- /#appScreen -->
 
 <!-- Modal tambah / edit link -->
 <div id="modal" class="modal hidden">
